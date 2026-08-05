@@ -16,13 +16,18 @@ async function sendEmail({ to, subject, htmlText }) {
 
   try {
     if (process.env.SENDGRID_API_KEY && process.env.SENDGRID_API_KEY.startsWith('SG.') && !process.env.SENDGRID_API_KEY.includes('mock')) {
+      const fromEmail = process.env.ADMIN_EMAIL || 'purvakadam9637@gmail.com';
       const msg = {
         to,
-        from: process.env.ADMIN_EMAIL || 'no-reply@sambhav.org',
+        from: {
+          email: fromEmail,
+          name: 'SAMBHAV Security Portal'
+        },
         subject,
         html: htmlText
       };
       await sgMail.send(msg);
+      console.log(`[SENDGRID SUCCESS] Email delivered successfully via SendGrid API to ${to}`);
       await EmailLog.create({ recipientEmail: to, subject, status: 'SENT' });
       return { success: true, mode: 'SENDGRID' };
     } else {
@@ -32,6 +37,9 @@ async function sendEmail({ to, subject, htmlText }) {
     }
   } catch (error) {
     console.error(`[EMAIL DISPATCH ERROR]`, error.message);
+    if (error.response && error.response.body) {
+      console.error(`[SENDGRID REJECTION DETAILS]`, JSON.stringify(error.response.body, null, 2));
+    }
     await EmailLog.create({ recipientEmail: to, subject, status: 'FAILED', errorDetails: error.message });
     return { success: false, error: error.message };
   }

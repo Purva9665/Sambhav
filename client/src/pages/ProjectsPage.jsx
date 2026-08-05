@@ -10,7 +10,7 @@ export default function ProjectsPage() {
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
     projectName: '',
-    assignedTeam: 'CyberSecurity',
+    assignedTeam: 'PR TEAM',
     description: '',
     deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
   });
@@ -44,7 +44,7 @@ export default function ProjectsPage() {
         setShowModal(false);
         setNewProject({ 
           projectName: '', 
-          assignedTeam: 'CyberSecurity', 
+          assignedTeam: 'PR TEAM', 
           description: '', 
           deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] 
         });
@@ -141,11 +141,14 @@ export default function ProjectsPage() {
                   value={newProject.assignedTeam} 
                   onChange={e => setNewProject({...newProject, assignedTeam: e.target.value})}
                 >
-                  <option value="CyberSecurity">CyberSecurity</option>
-                  <option value="WebDev">Web Development</option>
-                  <option value="Design">Design & UI</option>
-                  <option value="Management">Management</option>
-                  <option value="PR_Outreach">PR & Outreach</option>
+                  <option value="PR TEAM">PR TEAM</option>
+                  <option value="CSD">CSD</option>
+                  <option value="TECHNICAL">TECHNICAL</option>
+                  <option value="EVENT">EVENT</option>
+                  <option value="GRAPHICS">GRAPHICS</option>
+                  <option value="DOCUMENTATION">DOCUMENTATION</option>
+                  <option value="Video">Video</option>
+                  <option value="Membership Director">Membership Director</option>
                 </select>
               </div>
 

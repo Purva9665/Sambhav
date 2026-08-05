@@ -9,7 +9,7 @@ export default function RegisterPage({ onNavigate, setVerifyEmail }) {
     email: '',
     password: '',
     role: 'TEAM_MEMBER',
-    department: 'CyberSecurity',
+    department: 'PR TEAM',
     mobileNumber: '',
     position: 'Member'
   });
@@ -80,7 +80,7 @@ export default function RegisterPage({ onNavigate, setVerifyEmail }) {
         }}>
           <ShieldCheck size={20} color="#00A3FF" style={{ flexShrink: 0, marginTop: '2px' }} />
           <div>
-            <strong style={{ color: '#FFFFFF' }}>Admin Verification Guard:</strong> Submitting registration dispatches a secure 6-digit OTP directly to the <strong>Admin's Email</strong>. In local development, the OTP is printed directly in your terminal log below.
+            <strong style={{ color: '#FFFFFF' }}>Admin Verification Guard:</strong> Submitting registration dispatches a secure 6-digit OTP directly to the <strong>Admin's Email</strong>.
           </div>
         </div>
 
@@ -148,11 +148,14 @@ export default function RegisterPage({ onNavigate, setVerifyEmail }) {
             <div className="form-group">
               <label className="form-label">Department / Team</label>
               <select name="department" className="form-select" value={formData.department} onChange={handleChange}>
-                <option value="CyberSecurity">CyberSecurity</option>
-                <option value="WebDev">Web Development</option>
-                <option value="Design">Design & UI</option>
-                <option value="Management">Management</option>
-                <option value="PR_Outreach">PR & Outreach</option>
+                <option value="PR TEAM">PR TEAM</option>
+                <option value="CSD">CSD</option>
+                <option value="TECHNICAL">TECHNICAL</option>
+                <option value="EVENT">EVENT</option>
+                <option value="GRAPHICS">GRAPHICS</option>
+                <option value="DOCUMENTATION">DOCUMENTATION</option>
+                <option value="Video">Video</option>
+                <option value="Membership Director">Membership Director</option>
               </select>
             </div>
           </div>
@@ -175,7 +178,7 @@ export default function RegisterPage({ onNavigate, setVerifyEmail }) {
                 type="text" 
                 name="position" 
                 className="form-input" 
-                placeholder="e.g. Security Specialist"
+                placeholder="e.g. Member / Executive"
                 value={formData.position} 
                 onChange={handleChange} 
               />

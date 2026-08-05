@@ -59,7 +59,16 @@ export default function AnnouncementsPage() {
     }
   };
 
-  const departments = ['CyberSecurity', 'WebDev', 'Design', 'Management', 'PR_Outreach'];
+  const departments = [
+    'PR TEAM',
+    'CSD',
+    'TECHNICAL',
+    'EVENT',
+    'GRAPHICS',
+    'DOCUMENTATION',
+    'Video',
+    'Membership Director'
+  ];
 
   return (
     <div>

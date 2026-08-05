@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 import SambhavLogo from '../components/SambhavLogo';
-import { ArrowRight, ShieldCheck } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 
 export default function LoginPage({ onNavigate }) {
   const [email, setEmail] = useState('');
@@ -31,11 +31,6 @@ export default function LoginPage({ onNavigate }) {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickFillAdmin = () => {
-    setEmail('purvakadam9637@gmail.com');
-    setPassword('Admin@123456');
   };
 
   return (
@@ -96,27 +91,6 @@ export default function LoginPage({ onNavigate }) {
             {loading ? 'Authenticating & Auditing...' : 'Sign In'} <ArrowRight size={18} />
           </button>
         </form>
-
-        {/* Quick Admin Seed Fill Button */}
-        <div style={{
-          marginTop: '20px',
-          padding: '12px',
-          background: 'rgba(229, 169, 60, 0.1)',
-          border: '1px solid rgba(229, 169, 60, 0.3)',
-          borderRadius: '8px',
-          textAlign: 'center'
-        }}>
-          <div style={{ fontSize: '12px', color: '#E5A93C', marginBottom: '6px', fontWeight: 'bold' }}>
-            <ShieldCheck size={14} style={{ display: 'inline', marginRight: '4px' }} /> Initial Admin Credentials
-          </div>
-          <button 
-            onClick={handleQuickFillAdmin}
-            className="btn btn-outline"
-            style={{ fontSize: '11px', padding: '4px 10px', borderColor: '#E5A93C', color: '#E5A93C' }}
-          >
-            Fill Admin Credentials (`purvakadam9637@gmail.com`)
-          </button>
-        </div>
 
         <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#94A3B8' }}>
           Don't have an account yet?{' '}
