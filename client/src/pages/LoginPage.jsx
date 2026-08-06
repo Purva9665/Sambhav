@@ -44,9 +44,25 @@ export default function LoginPage({ onNavigate }) {
       <div className="glass-card" style={{ maxWidth: '440px', width: '100%', padding: '36px' }}>
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
-            <SambhavLogo size={130} />
+            <SambhavLogo size={140} />
           </div>
-          <p style={{ color: '#00A3FF', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '2px', fontWeight: 'bold', marginTop: '6px' }}>
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center', 
+            gap: '8px', 
+            fontSize: '11px', 
+            fontWeight: '700', 
+            letterSpacing: '2px', 
+            marginTop: '8px' 
+          }}>
+            <span style={{ color: '#d4af37' }}>INITIATE</span>
+            <span style={{ color: '#64748B' }}>•</span>
+            <span style={{ color: '#00A3FF' }}>CONNECT</span>
+            <span style={{ color: '#64748B' }}>•</span>
+            <span style={{ color: '#FF6B35' }}>EVOLVE</span>
+          </div>
+          <p style={{ color: '#94A3B8', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '1.5px', marginTop: '6px' }}>
             PORTAL SIGN-IN
           </p>
         </div>
