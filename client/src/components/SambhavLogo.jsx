@@ -1,50 +1,39 @@
 import React, { useState } from 'react';
 
 /**
- * SAMBHAV Circular Logo Component:
- * - Uses /logo.svg or /logo.png inside client/public folder
- * - Rendered in a clean circular disc frame with slight zoom
+ * SAMBHAV Logo Component:
+ * - Uses /logo.jpeg inside client/public folder
+ * - No shape clipping — logo displays naturally with colors spreading out
  */
 export default function SambhavLogo({ size = 120 }) {
   const [imgError, setImgError] = useState(false);
 
   return (
-    <div style={{ display: 'inline-flex', flexDirection: 'column', alignItems: 'center' }}>
-      <div 
-        style={{
-          width: `${size}px`,
-          height: `${size}px`,
-          borderRadius: '50%',
-          background: '#000000',
-          border: '1.5px solid rgba(255, 255, 255, 0.15)',
-          boxShadow: '0 0 25px rgba(0, 163, 255, 0.25), inset 0 0 15px rgba(0,0,0,0.9)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          overflow: 'hidden',
-          padding: '4px',
-          position: 'relative'
-        }}
-      >
-        {!imgError ? (
-          <img 
-            src="/logo.jpeg" 
-            alt="SAMBHAV Logo" 
-            style={{ 
-              width: '100%', 
-              height: '100%', 
-              objectFit: 'contain',
-              transform: 'scale(1.12)',
-              borderRadius: '50%'
-            }}
-            onError={() => setImgError(true)}
-          />
-        ) : (
-          <div style={{ color: '#00A3FF', fontWeight: 'bold', fontSize: '18px' }}>
-            SAMBHAV
-          </div>
-        )}
-      </div>
+    <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
+      {!imgError ? (
+        <img 
+          src="/logo.jpeg" 
+          alt="SAMBHAV Logo" 
+          style={{ 
+            width: `${size}px`, 
+            height: 'auto',
+            objectFit: 'contain',
+            filter: 'drop-shadow(0 0 12px rgba(0, 163, 255, 0.3))'
+          }}
+          onError={() => setImgError(true)}
+        />
+      ) : (
+        <div style={{ 
+          color: '#00A3FF', 
+          fontWeight: '900', 
+          fontSize: `${size * 0.2}px`,
+          fontFamily: 'Clash Display, sans-serif',
+          letterSpacing: '2px',
+          textShadow: '0 0 20px rgba(0, 163, 255, 0.4)'
+        }}>
+          SAMBHAV
+        </div>
+      )}
     </div>
   );
 }

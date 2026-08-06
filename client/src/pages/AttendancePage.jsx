@@ -246,49 +246,57 @@ export default function AttendancePage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px', marginBottom: '18px' }}>
           <h3 style={{ color: '#FFFFFF', fontSize: '18px' }}>Attendance History Log</h3>
 
-          {/* Filters Row */}
-          <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter by Month</label>
-              <input
-                type="month"
-                className="form-input"
-                style={{ padding: '7px 12px', fontSize: '13px', width: '160px' }}
-                value={filterMonth}
-                onChange={e => setFilterMonth(e.target.value)}
-              />
-            </div>
+          {/* Filters Row - single inline row */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <input
+              type="month"
+              className="form-input"
+              style={{ padding: '7px 12px', fontSize: '13px', width: '160px', margin: 0 }}
+              value={filterMonth}
+              onChange={e => setFilterMonth(e.target.value)}
+              title="Filter by month"
+            />
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-              <label style={{ fontSize: '10px', color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Filter by Status</label>
-              <div style={{ display: 'flex', gap: '6px' }}>
-                {['ALL', 'PRESENT', 'ABSENT'].map(s => (
-                  <button
-                    key={s}
-                    onClick={() => setFilterStatus(s)}
-                    className="date-preset-btn"
-                    style={{
-                      background: filterStatus === s
-                        ? s === 'PRESENT' ? '#4CAF50' : s === 'ABSENT' ? '#FF6B35' : '#00A3FF'
-                        : 'rgba(0,163,255,0.1)',
-                      color: filterStatus === s ? '#0A0D14' : '#00A3FF',
-                      border: '1px solid rgba(0,163,255,0.25)',
-                      padding: '6px 12px'
-                    }}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
+            <div style={{ display: 'flex', gap: '4px' }}>
+              {['ALL', 'PRESENT', 'ABSENT'].map(s => (
+                <button
+                  key={s}
+                  onClick={() => setFilterStatus(s)}
+                  style={{
+                    background: filterStatus === s
+                      ? s === 'PRESENT' ? '#4CAF50' : s === 'ABSENT' ? '#FF6B35' : '#00A3FF'
+                      : 'rgba(0,163,255,0.1)',
+                    color: filterStatus === s ? '#0A0D14' : '#00A3FF',
+                    border: '1px solid rgba(0,163,255,0.25)',
+                    padding: '6px 14px',
+                    borderRadius: '6px',
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer',
+                    transition: 'all 0.15s ease'
+                  }}
+                >
+                  {s}
+                </button>
+              ))}
             </div>
 
             {(filterMonth || filterStatus !== 'ALL') && (
               <button
                 onClick={() => { setFilterMonth(''); setFilterStatus('ALL'); }}
-                className="btn btn-outline"
-                style={{ fontSize: '12px', padding: '6px 12px', alignSelf: 'flex-end' }}
+                style={{
+                  background: 'rgba(248, 113, 113, 0.1)',
+                  border: '1px solid rgba(248, 113, 113, 0.3)',
+                  color: '#F87171',
+                  padding: '6px 14px',
+                  borderRadius: '6px',
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease'
+                }}
               >
-                Clear Filters
+                ✕ Clear
               </button>
             )}
           </div>
