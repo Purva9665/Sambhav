@@ -40,12 +40,12 @@ export default function LoginPage({ onNavigate }) {
       alignItems: 'center',
       justifyContent: 'center',
       padding: '20px',
-      background: 'radial-gradient(ellipse at top, #0F1724 0%, #0D1117 100%)'
+      background: 'radial-gradient(ellipse at center, #111827 0%, #0B1220 55%, #05080F 100%)'
     }}>
-      <div className="glass-card" style={{ maxWidth: '440px', width: '100%', padding: '38px', background: 'rgba(15, 23, 36, 0.75)', border: '1px solid rgba(255, 255, 255, 0.08)' }}>
+      <div className="glass-card" style={{ maxWidth: '440px', width: '100%', padding: '38px', background: 'rgba(17, 24, 39, 0.75)', border: '1px solid rgba(255, 255, 255, 0.08)', boxShadow: '0 20px 50px rgba(5, 8, 15, 0.8)' }}>
         <div style={{ textAlign: 'center', marginBottom: '28px' }}>
           <div style={{ marginBottom: '14px', display: 'flex', justifyContent: 'center' }}>
-            <SambhavLogo size={145} />
+            <SambhavLogo size={150} />
           </div>
 
           {/* INITIATE • CONNECT • EVOLVE Motto Line */}
@@ -57,17 +57,17 @@ export default function LoginPage({ onNavigate }) {
             fontSize: '13px', 
             fontWeight: '800', 
             letterSpacing: '3px', 
-            marginTop: '10px' 
+            marginTop: '12px' 
           }}>
-            <span style={{ color: '#F2B234' }}>INITIATE</span>
-            <span style={{ color: '#A2AAB8', fontSize: '10px' }}>•</span>
-            <span style={{ color: '#1FA9FF' }}>CONNECT</span>
-            <span style={{ color: '#A2AAB8', fontSize: '10px' }}>•</span>
-            <span style={{ color: '#FF6A2D' }}>EVOLVE</span>
+            <span style={{ color: '#F2B233' }}>INITIATE</span>
+            <span style={{ color: '#64748B', fontSize: '10px' }}>•</span>
+            <span style={{ color: '#2EA8FF' }}>CONNECT</span>
+            <span style={{ color: '#64748B', fontSize: '10px' }}>•</span>
+            <span style={{ color: '#FF6B2C' }}>EVOLVE</span>
           </div>
 
           {/* PORTAL SIGN-IN Subheading */}
-          <p style={{ color: '#A2AAB8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '700', marginTop: '10px' }}>
+          <p style={{ color: '#94A3B8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '4px', fontWeight: '700', marginTop: '10px' }}>
             PORTAL SIGN-IN
           </p>
         </div>
@@ -80,7 +80,7 @@ export default function LoginPage({ onNavigate }) {
 
         <form onSubmit={handleSubmit}>
           <div className="form-group">
-            <label className="form-label" style={{ color: '#A2AAB8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>
+            <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>
               EMAIL ADDRESS
             </label>
             <input 
@@ -90,12 +90,12 @@ export default function LoginPage({ onNavigate }) {
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
-              style={{ background: 'rgba(13, 17, 23, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}
+              style={{ background: 'rgba(11, 18, 32, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}
             />
           </div>
 
           <div className="form-group">
-            <label className="form-label" style={{ color: '#A2AAB8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>
+            <label className="form-label" style={{ color: '#94A3B8', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: '700' }}>
               PASSWORD
             </label>
             <input 
@@ -105,25 +105,25 @@ export default function LoginPage({ onNavigate }) {
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
-              style={{ background: 'rgba(13, 17, 23, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}
+              style={{ background: 'rgba(11, 18, 32, 0.8)', borderColor: 'rgba(255, 255, 255, 0.1)', color: '#FFFFFF' }}
             />
           </div>
 
           <button 
             type="submit" 
             className="btn btn-primary" 
-            style={{ width: '100%', padding: '14px', marginTop: '12px', fontSize: '15px', background: 'linear-gradient(90deg, #1FA9FF, #F2B234)', border: 'none', fontWeight: '700', color: '#0A0D14' }}
+            style={{ width: '100%', padding: '14px', marginTop: '12px', fontSize: '15px', background: 'linear-gradient(90deg, #2EA8FF 0%, #F2B233 100%)', border: 'none', fontWeight: '700', color: '#05080F' }}
             disabled={loading}
           >
             {loading ? 'Authenticating & Auditing...' : 'Sign In'} <ArrowRight size={18} />
           </button>
         </form>
 
-        <div style={{ textAlign: 'center', marginTop: '22px', fontSize: '13px', color: '#A2AAB8' }}>
+        <div style={{ textAlign: 'center', marginTop: '22px', fontSize: '13px', color: '#94A3B8' }}>
           Don't have an account yet?{' '}
           <button 
             onClick={() => onNavigate('register')} 
-            style={{ background: 'none', border: 'none', color: '#1FA9FF', fontWeight: 'bold', cursor: 'pointer' }}
+            style={{ background: 'none', border: 'none', color: '#2EA8FF', fontWeight: 'bold', cursor: 'pointer' }}
           >
             Request Admin Registration
           </button>
