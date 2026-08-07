@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 
 /**
- * SAMBHAV Official Logo Component
- * - Displays logo without any fixed shape or container boundaries
- * - Replicates the official hero logo styling: object-contain with drop-shadow
- *   and an ambient radiating background glow behind the logo image
+ * SAMBHAV Tenebrism Logo Component
+ * - Eliminates solid black background boxes via screen blend mode
+ * - No defined shape, borders, or container boundaries
+ * - Radiates soft, smoky, multi-layered color gradients (Cyan, Gold, Amber)
+ *   that fade seamlessly into dark workspace backgrounds.
  */
 export default function SambhavLogo({ size = 120 }) {
   const [imgIndex, setImgIndex] = useState(0);
@@ -27,20 +28,26 @@ export default function SambhavLogo({ size = 120 }) {
   };
 
   return (
-    <div style={{ position: 'relative', display: 'inline-block', textAlign: 'center' }}>
-      {/* Radiating Ambient Glow behind the logo image */}
+    <div 
+      style={{ 
+        position: 'relative', 
+        display: 'inline-flex', 
+        alignItems: 'center', 
+        justifyContent: 'center',
+        padding: '4px'
+      }}
+    >
+      {/* Tenebrism Diffused Radial Aura: Smoky color transition merging into dark background */}
       <div 
         style={{
           position: 'absolute',
           top: '50%',
           left: '50%',
           transform: 'translate(-50%, -50%)',
-          width: `${size * 0.85}px`,
-          height: `${size * 0.85}px`,
-          background: '#d4af37',
-          filter: 'blur(45px)',
-          opacity: 0.35,
-          borderRadius: '50%',
+          width: `${size * 1.4}px`,
+          height: `${size * 0.9}px`,
+          background: 'radial-gradient(ellipse at center, rgba(0, 163, 255, 0.25) 0%, rgba(212, 175, 55, 0.18) 40%, rgba(255, 107, 53, 0.08) 65%, transparent 100%)',
+          filter: 'blur(20px)',
           pointerEvents: 'none',
           zIndex: 0
         }}
@@ -57,8 +64,9 @@ export default function SambhavLogo({ size = 120 }) {
             objectFit: 'contain',
             position: 'relative',
             zIndex: 1,
-            filter: 'drop-shadow(0 0 15px rgba(212, 175, 55, 0.5))',
-            transition: 'transform 0.3s ease'
+            mixBlendMode: 'screen', // Completely removes black background box, letting logo float naturally
+            filter: 'drop-shadow(0 0 14px rgba(0, 163, 255, 0.35)) drop-shadow(0 0 28px rgba(212, 175, 55, 0.25))',
+            transition: 'transform 0.3s ease, filter 0.3s ease'
           }}
           onError={handleErr}
         />
@@ -71,7 +79,7 @@ export default function SambhavLogo({ size = 120 }) {
           fontSize: `${Math.max(16, size * 0.22)}px`,
           fontFamily: 'Clash Display, sans-serif',
           letterSpacing: '3px',
-          textShadow: '0 0 20px rgba(212, 175, 55, 0.6)'
+          textShadow: '0 0 20px rgba(212, 175, 55, 0.6), 0 0 40px rgba(0, 163, 255, 0.4)'
         }}>
           SAMBHAV
         </div>
