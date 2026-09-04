@@ -57,9 +57,7 @@ export default function DepartmentHeadsPage({ query }) {
             <Card key={d.department}>
               <div className="row-between" style={{ marginBottom: 14 }}>
                 <div className="row">
-                  <div className="list-mark" style={{
-                    background: 'var(--brand-cyan-soft)', color: 'var(--brand-cyan-dark)'
-                  }}>
+                  <div className="list-mark">
                     <Building2 size={16} />
                   </div>
                   <h3 className="card-title">{d.department}</h3>

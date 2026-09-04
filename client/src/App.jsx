@@ -23,6 +23,7 @@ import AnnouncementsPage from './pages/AnnouncementsPage';
 import LeavePage from './pages/LeavePage';
 import AuditLogsPage from './pages/AuditLogsPage';
 import AccountPage from './pages/AccountPage';
+import ChangeRequestsPage from './pages/ChangeRequestsPage';
 
 const PAGES = {
   dashboard: DashboardPage,
@@ -35,7 +36,8 @@ const PAGES = {
   announcements: AnnouncementsPage,
   leave: LeavePage,
   'audit-logs': AuditLogsPage,
-  account: AccountPage
+  account: AccountPage,
+  'change-requests': ChangeRequestsPage
 };
 
 /** Which roles may open each page — mirrors the server's RBAC. */

@@ -18,6 +18,7 @@ const taskRoutes = require('./routes/taskRoutes');
 const attendanceRoutes = require('./routes/attendanceRoutes');
 const announcementRoutes = require('./routes/announcementRoutes');
 const leaveRoutes = require('./routes/leaveRoutes');
+const profileRequestRoutes = require('./routes/profileRequestRoutes');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -127,6 +128,7 @@ app.use('/api/v1/tasks', taskRoutes);
 app.use('/api/v1/attendance', attendanceRoutes);
 app.use('/api/v1/announcements', announcementRoutes);
 app.use('/api/v1/leave', leaveRoutes);
+app.use('/api/v1/profile-requests', profileRequestRoutes);
 
 // Unmatched API routes returned Express's HTML error page, which the client
 // could not parse. Always answer JSON.

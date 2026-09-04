@@ -5,47 +5,72 @@
    ========================================================================== */
 
 :root {
-  /* --- Brand (do not change) --- */
-  --brand-cyan: #2EA8FF;
-  --brand-gold: #F2B233;
-  --brand-orange: #FF6B2C;
+  /* --- Brand: the only hues in the product, taken from the logo --- */
+  --cyan: #2EA8FF;
+  --gold: #F2B233;
+  --orange: #FF6B2C;
 
-  --brand-cyan-dark: #1B7FC9;
-  --brand-cyan-soft: rgba(46, 168, 255, 0.10);
-  --brand-gold-soft: rgba(242, 178, 51, 0.12);
-  --brand-orange-soft: rgba(255, 107, 44, 0.10);
+  /* Shades of each, for text and marks. No filled colour blocks. */
+  --cyan-deep: #1173BE;
+  --gold-deep: #9A6F08;
+  --orange-deep: #C2481A;
+
+  --cyan-mist: #F2F8FE;
+  --gold-mist: #FDF9F0;
+  --orange-mist: #FEF5F1;
+
+  /* --- Neutrals: greys tinted with the logo's cyan, so nothing reads
+         as a foreign colour. Everything is white or a shade of these. --- */
+  --n-0: #FFFFFF;
+  --n-25: #FCFDFE;
+  --n-50: #F7F9FB;
+  --n-100: #EFF3F7;
+  --n-200: #E1E8EF;
+  --n-300: #CBD5DF;
+  --n-400: #9FADBC;
+  --n-500: #74828F;
+  --n-600: #55616D;
+  --n-700: #3D4854;
+  --n-800: #27313B;
+  --n-900: #17202A;
 
   /* --- Surfaces --- */
-  --shell: #E8EAED;
-  --app: #F4F5F7;
-  --surface: #FFFFFF;
-  --surface-2: #FAFBFC;
-  --surface-sunken: #F0F1F4;
-
-  /* Dark plate — used behind the logo and for inverted cards */
-  --plate: #0E1524;
-  --plate-2: #16203354;
+  --shell: var(--n-100);
+  --app: var(--n-50);
+  --surface: var(--n-0);
+  --surface-2: var(--n-25);
+  --surface-sunken: var(--n-50);
 
   /* --- Text --- */
-  --text: #14181F;
-  --text-2: #59616E;
-  --text-3: #8A929F;
-  --text-inv: #FFFFFF;
+  --text: var(--n-900);
+  --text-2: var(--n-600);
+  --text-3: var(--n-400);
+  --text-inv: var(--n-0);
   --text-inv-2: rgba(255, 255, 255, 0.72);
 
   /* --- Lines --- */
-  --line: #E2E5EA;
-  --line-strong: #D0D5DC;
+  --line: var(--n-200);
+  --line-strong: var(--n-300);
 
-  /* --- Status --- */
-  --ok: #1F9D57;
-  --ok-soft: #E6F5ED;
-  --warn: #C98A06;
-  --warn-soft: #FDF4E3;
-  --err: #D33A2C;
-  --err-soft: #FCEDEB;
-  --info: var(--brand-cyan);
-  --info-soft: var(--brand-cyan-soft);
+  /* --- Status maps onto the logo's three hues, nothing else --- */
+  --ok: var(--cyan-deep);
+  --ok-soft: var(--cyan-mist);
+  --warn: var(--gold-deep);
+  --warn-soft: var(--gold-mist);
+  --err: var(--orange-deep);
+  --err-soft: var(--orange-mist);
+  --info: var(--cyan-deep);
+  --info-soft: var(--cyan-mist);
+
+  /* Names kept so existing rules keep resolving */
+  --brand-cyan: var(--cyan);
+  --brand-gold: var(--gold);
+  --brand-orange: var(--orange);
+  --brand-cyan-dark: var(--cyan-deep);
+  --brand-cyan-soft: var(--cyan-mist);
+  --brand-gold-soft: var(--gold-mist);
+  --brand-orange-soft: var(--orange-mist);
+  --plate: var(--n-900);
 
   /* --- Type --- */
   --font: 'Satoshi', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
@@ -55,13 +80,11 @@
   --sidebar-w: 248px;
   --topbar-h: 68px;
   --gap: 16px;
-
-  /* Rectangular: every radius is zero. Single knob. */
   --radius: 0px;
 
-  --shadow-1: 0 1px 2px rgba(16, 24, 40, 0.04);
-  --shadow-2: 0 4px 16px rgba(16, 24, 40, 0.07);
-  --shadow-pop: 0 16px 48px rgba(16, 24, 40, 0.18);
+  --shadow-1: 0 1px 2px rgba(23, 32, 42, 0.04);
+  --shadow-2: 0 4px 16px rgba(23, 32, 42, 0.07);
+  --shadow-pop: 0 16px 48px rgba(23, 32, 42, 0.16);
 }
 
 /* ==========================================================================
@@ -117,7 +140,7 @@ a { color: var(--brand-cyan-dark); text-decoration: none; }
 a:hover { text-decoration: underline; }
 
 :focus-visible {
-  outline: 2px solid var(--brand-cyan);
+  outline: 2px solid var(--cyan);
   outline-offset: 2px;
 }
 
@@ -174,14 +197,15 @@ a:hover { text-decoration: underline; }
   border-bottom: 1px solid var(--line);
 }
 
-/* Dark plate: the logo artwork is largely white, so it needs a dark backdrop */
+/* The logo sits directly on the page — no plate, no frame.
+   icon.png is the mark alone (the wordmark is set in type below it), so it
+   reads on a light surface; logo.png could not, being ~39% white pixels. */
 .logo-plate {
-  background: var(--plate);
-  padding: 14px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
-  min-height: 64px;
+  padding: 4px 4px 2px;
+  background: none;
 }
 
 .logo-wordmark {
@@ -189,14 +213,14 @@ a:hover { text-decoration: underline; }
   font-weight: 700;
   font-size: 17px;
   letter-spacing: 0.14em;
-  color: #FFFFFF;
+  color: var(--text);
   line-height: 1;
 }
 
 .logo-sub {
   font-size: 9px;
   letter-spacing: 0.18em;
-  color: var(--text-inv-2);
+  color: var(--text-3);
   font-weight: 600;
   margin-top: 3px;
 }
@@ -236,8 +260,8 @@ a:hover { text-decoration: underline; }
 }
 
 .nav-item.is-active {
-  background: var(--brand-cyan-soft);
-  color: var(--brand-cyan-dark);
+  background: var(--n-50);
+  color: var(--text);
   font-weight: 650;
 }
 
@@ -257,20 +281,14 @@ a:hover { text-decoration: underline; }
 .nav-count {
   font-size: 11px;
   font-weight: 700;
-  padding: 1px 7px;
-  background: var(--brand-cyan);
-  color: #fff;
-  line-height: 1.6;
+  color: var(--cyan-deep);
 }
 
 .nav-lock {
   font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.06em;
-  padding: 2px 6px;
-  background: var(--brand-orange-soft);
-  color: var(--brand-orange);
-  border: 1px solid rgba(255, 107, 44, 0.3);
+  letter-spacing: 0.08em;
+  color: var(--text-3);
 }
 
 .sidebar-foot {
@@ -278,38 +296,24 @@ a:hover { text-decoration: underline; }
   padding: 12px;
 }
 
-/* Dark promo/identity card at the bottom of the sidebar */
+/* Identity block: plain, bordered, no fill */
 .side-card {
-  background: var(--plate);
-  color: #fff;
-  padding: 16px;
-  position: relative;
-  overflow: hidden;
+  border-top: 1px solid var(--line);
+  padding: 14px 8px 4px;
 }
-
-.side-card::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(120% 80% at 15% 20%, rgba(46, 168, 255, 0.30), transparent 60%),
-    radial-gradient(90% 70% at 85% 90%, rgba(242, 178, 51, 0.22), transparent 60%);
-  pointer-events: none;
-}
-
-.side-card > * { position: relative; z-index: 1; }
 
 .side-card-title {
   font-family: var(--font-display);
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 600;
-  margin-bottom: 4px;
+  color: var(--text);
+  margin-bottom: 3px;
 }
 
 .side-card-text {
   font-size: 12px;
-  color: var(--text-inv-2);
-  margin-bottom: 12px;
+  color: var(--text-3);
+  margin-bottom: 10px;
 }
 
 /* ==========================================================================
@@ -419,8 +423,9 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  background: var(--plate);
-  color: #fff;
+  background: var(--n-100);
+  border: 1px solid var(--line);
+  color: var(--text-2);
   font-weight: 700;
   font-size: 14px;
   letter-spacing: 0.02em;
@@ -514,8 +519,8 @@ a:hover { text-decoration: underline; }
 .btn-sm { height: 32px; padding: 0 12px; font-size: 12.5px; }
 .btn-block { width: 100%; }
 
-.btn-primary { background: var(--brand-cyan); color: #fff; }
-.btn-primary:hover:not(:disabled) { background: var(--brand-cyan-dark); }
+.btn-primary { background: var(--n-900); color: var(--n-0); }
+.btn-primary:hover:not(:disabled) { background: var(--n-800); }
 
 .btn-secondary {
   background: var(--surface);
@@ -524,17 +529,25 @@ a:hover { text-decoration: underline; }
 }
 .btn-secondary:hover:not(:disabled) { background: var(--surface-sunken); }
 
-.btn-gold { background: var(--brand-gold); color: #3A2A05; }
-.btn-gold:hover:not(:disabled) { background: #DFA229; }
+.btn-gold {
+  background: var(--n-0);
+  border-color: var(--gold);
+  color: var(--gold-deep);
+}
+.btn-gold:hover:not(:disabled) { background: var(--gold-mist); }
 
-.btn-danger { background: var(--err); color: #fff; }
-.btn-danger:hover:not(:disabled) { background: #B93023; }
+.btn-danger {
+  background: var(--n-0);
+  border-color: var(--orange);
+  color: var(--orange-deep);
+}
+.btn-danger:hover:not(:disabled) { background: var(--orange-mist); }
 
 .btn-ghost { background: transparent; color: var(--text-2); }
 .btn-ghost:hover:not(:disabled) { background: var(--surface-sunken); color: var(--text); }
 
-.btn-ok { background: var(--ok); color: #fff; }
-.btn-ok:hover:not(:disabled) { background: #178146; }
+.btn-ok { background: var(--n-900); color: var(--n-0); }
+.btn-ok:hover:not(:disabled) { background: var(--n-800); }
 
 /* ==========================================================================
    Cards
@@ -584,26 +597,10 @@ a:hover { text-decoration: underline; }
   min-width: 0;
 }
 
-/* The first stat card is inverted, as in the reference */
+/* The lead card is marked by a coloured top rule, not a filled block */
 .stat-feature {
-  background: var(--plate);
-  border-color: var(--plate);
-  color: #fff;
-  position: relative;
-  overflow: hidden;
+  border-top: 2px solid var(--cyan);
 }
-
-.stat-feature::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(110% 90% at 12% 18%, rgba(46, 168, 255, 0.34), transparent 62%),
-    radial-gradient(90% 80% at 88% 92%, rgba(242, 178, 51, 0.20), transparent 62%);
-  pointer-events: none;
-}
-
-.stat-feature > * { position: relative; z-index: 1; }
 
 .stat-top {
   display: flex;
@@ -618,7 +615,7 @@ a:hover { text-decoration: underline; }
   color: var(--text-2);
 }
 
-.stat-feature .stat-label { color: var(--text-inv-2); }
+.stat-feature .stat-label { color: var(--text-2); }
 
 .stat-go {
   width: 28px;
@@ -634,13 +631,7 @@ a:hover { text-decoration: underline; }
 
 .stat-go:hover { background: var(--brand-cyan); border-color: var(--brand-cyan); color: #fff; }
 
-.stat-feature .stat-go {
-  background: rgba(255, 255, 255, 0.12);
-  border-color: rgba(255, 255, 255, 0.24);
-  color: #fff;
-}
-
-.stat-feature .stat-go:hover { background: #fff; color: var(--plate); }
+.stat-feature .stat-value { color: var(--cyan-deep); }
 
 .stat-value {
   font-family: var(--font-display);
@@ -658,45 +649,56 @@ a:hover { text-decoration: underline; }
   color: var(--text-3);
 }
 
-.stat-feature .stat-foot { color: var(--text-inv-2); }
 
+
+/* Text and an arrow, not a coloured pill */
 .stat-delta {
   display: inline-flex;
   align-items: center;
-  gap: 2px;
-  font-size: 11px;
+  gap: 3px;
+  font-size: 11.5px;
   font-weight: 700;
-  padding: 1px 6px;
-  background: var(--ok-soft);
   color: var(--ok);
 }
 
-.stat-delta.is-down { background: var(--err-soft); color: var(--err); }
-.stat-feature .stat-delta { background: rgba(255, 255, 255, 0.16); color: #fff; }
+.stat-delta.is-down { color: var(--err); }
+
 
 /* ==========================================================================
    Badges
    ========================================================================== */
 
+/* Status reads as coloured text with a small dot — no filled boxes. */
 .badge {
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 9px;
-  font-size: 11px;
+  gap: 6px;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.03em;
-  border: 1px solid transparent;
+  letter-spacing: 0.04em;
   white-space: nowrap;
+  color: var(--text-2);
 }
 
-.badge-cyan { background: var(--brand-cyan-soft); color: var(--brand-cyan-dark); border-color: rgba(46, 168, 255, 0.28); }
-.badge-gold { background: var(--brand-gold-soft); color: #9A6F08; border-color: rgba(242, 178, 51, 0.34); }
-.badge-orange { background: var(--brand-orange-soft); color: #C2481A; border-color: rgba(255, 107, 44, 0.3); }
-.badge-ok { background: var(--ok-soft); color: var(--ok); border-color: rgba(31, 157, 87, 0.26); }
-.badge-warn { background: var(--warn-soft); color: var(--warn); border-color: rgba(201, 138, 6, 0.26); }
-.badge-err { background: var(--err-soft); color: var(--err); border-color: rgba(211, 58, 44, 0.24); }
-.badge-mute { background: var(--surface-sunken); color: var(--text-2); border-color: var(--line); }
+.badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  flex-shrink: 0;
+  background: currentColor;
+}
+
+/* An icon inside a badge replaces the dot */
+.badge > svg + * { margin-left: -2px; }
+.badge:has(> svg)::before { display: none; }
+
+.badge-cyan { color: var(--cyan-deep); }
+.badge-gold { color: var(--gold-deep); }
+.badge-orange { color: var(--orange-deep); }
+.badge-ok { color: var(--cyan-deep); }
+.badge-warn { color: var(--gold-deep); }
+.badge-err { color: var(--orange-deep); }
+.badge-mute { color: var(--text-3); }
 
 /* ==========================================================================
    Forms
@@ -803,9 +805,9 @@ a:hover { text-decoration: underline; }
 
 .seg button:last-child { border-right: 0; }
 .seg button:hover { background: var(--surface-sunken); }
-.seg button.is-on { background: var(--brand-cyan); color: #fff; }
-.seg button.is-on.tone-ok { background: var(--ok); }
-.seg button.is-on.tone-err { background: var(--err); }
+.seg button.is-on { background: var(--n-900); color: var(--n-0); }
+.seg button.is-on.tone-ok { background: var(--cyan-deep); }
+.seg button.is-on.tone-err { background: var(--orange-deep); }
 
 /* ==========================================================================
    Tables
@@ -890,7 +892,7 @@ a:hover { text-decoration: underline; }
   flex-shrink: 0;
   display: grid;
   place-items: center;
-  background: var(--surface-sunken);
+  border: 1px solid var(--line);
   color: var(--text-2);
 }
 
@@ -941,8 +943,8 @@ a:hover { text-decoration: underline; }
   min-height: 2px;
 }
 
-.bar-fill.tone-gold { background: var(--brand-gold); }
-.bar-fill.tone-deep { background: var(--brand-cyan-dark); }
+.bar-fill.tone-gold { background: var(--gold); }
+.bar-fill.tone-deep { background: var(--cyan-deep); }
 
 .bar-cap {
   position: absolute;
@@ -952,8 +954,8 @@ a:hover { text-decoration: underline; }
   font-size: 10.5px;
   font-weight: 700;
   padding: 1px 6px;
-  background: var(--plate);
-  color: #fff;
+  background: var(--n-800);
+  color: var(--n-0);
   white-space: nowrap;
 }
 
@@ -987,7 +989,7 @@ a:hover { text-decoration: underline; }
 .overlay {
   position: fixed;
   inset: 0;
-  background: rgba(14, 21, 36, 0.55);
+  background: rgba(23, 32, 42, 0.5);
   display: grid;
   place-items: center;
   padding: 20px;
@@ -1085,7 +1087,7 @@ a:hover { text-decoration: underline; }
   margin: 0 auto 12px;
   display: grid;
   place-items: center;
-  background: var(--surface-sunken);
+  border: 1px solid var(--line);
   color: var(--text-3);
 }
 
@@ -1102,10 +1104,10 @@ a:hover { text-decoration: underline; }
   margin-bottom: 16px;
 }
 
-.alert-err { background: var(--err-soft); border-color: rgba(211, 58, 44, 0.28); color: #8E2318; }
-.alert-ok { background: var(--ok-soft); border-color: rgba(31, 157, 87, 0.28); color: #13603A; }
-.alert-info { background: var(--brand-cyan-soft); border-color: rgba(46, 168, 255, 0.3); color: #14567F; }
-.alert-warn { background: var(--warn-soft); border-color: rgba(201, 138, 6, 0.3); color: #7A5404; }
+.alert-err { background: var(--orange-mist); border-color: var(--line); border-left: 2px solid var(--orange); color: var(--text); }
+.alert-ok { background: var(--cyan-mist); border-color: var(--line); border-left: 2px solid var(--cyan); color: var(--text); }
+.alert-info { background: var(--cyan-mist); border-color: var(--line); border-left: 2px solid var(--cyan); color: var(--text); }
+.alert-warn { background: var(--gold-mist); border-color: var(--line); border-left: 2px solid var(--gold); color: var(--text); }
 
 .skel {
   background: linear-gradient(90deg, var(--surface-sunken) 25%, #E9EBEF 37%, var(--surface-sunken) 63%);
@@ -1215,6 +1217,17 @@ a:hover { text-decoration: underline; }
 }
 
 .motto-dot { color: rgba(255, 255, 255, 0.28); font-size: 8px; }
+
+/* Motto inside the light workspace, not the dark auth card */
+.motto-inline {
+  justify-content: flex-start;
+  gap: 7px;
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  margin: 0;
+}
+
+.motto-inline .motto-dot { color: var(--text-3); }
 
 /* --- Fields inside the dark card ---------------------------------------- */
 
@@ -1421,7 +1434,7 @@ a:hover { text-decoration: underline; }
   .scrim {
     position: fixed;
     inset: 0;
-    background: rgba(14, 21, 36, 0.5);
+    background: rgba(23, 32, 42, 0.45);
     z-index: 700;
     animation: fade 0.16s ease;
   }

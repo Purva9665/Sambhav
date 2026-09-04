@@ -51,9 +51,9 @@ export default function AdminLoginPage({ onNavigate }) {
       showMotto={false}
     >
       <div className="auth-badge" style={{
-        background: 'rgba(255, 107, 44, 0.12)',
-        borderColor: 'rgba(255, 107, 44, 0.4)',
-        color: 'var(--brand-orange)'
+        background: 'rgba(255, 107, 44, 0.10)',
+        borderColor: 'rgba(255, 107, 44, 0.35)',
+        color: 'var(--orange)'
       }}>
         <ShieldAlert size={24} />
       </div>

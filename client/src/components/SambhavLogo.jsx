@@ -14,12 +14,17 @@ import React, { useState } from 'react';
  * Effects preserved from the original: breathing halo + parallax 3D tilt.
  * Both are skipped for small sizes, where they only add noise.
  */
-export default function SambhavLogo({ size = 150, interactive = true }) {
+export default function SambhavLogo({ size = 150, interactive = true, mark = false }) {
   const [imgIndex, setImgIndex] = useState(0);
   const [hovered, setHovered] = useState(false);
   const [tilt, setTilt] = useState({ x: 0, y: 0 });
 
-  const sources = ['/logo.png', '/logo.jpeg', '/logo.jpg', '/logo.svg', '/icon.png'];
+  // `mark` uses icon.png: the symbol on its own, with no white wordmark, so it
+  // sits directly on a light surface. logo.png is ~39% white pixels and only
+  // works on a dark one.
+  const sources = mark
+    ? ['/icon.png', '/logo.png']
+    : ['/logo.png', '/logo.jpeg', '/logo.jpg', '/logo.svg', '/icon.png'];
   const fancy = interactive && size >= 90;
 
   const handleError = () => setImgIndex(i => (i < sources.length - 1 ? i + 1 : -1));
@@ -42,8 +47,8 @@ export default function SambhavLogo({ size = 150, interactive = true }) {
           fontWeight: 700,
           fontSize: Math.max(15, size * 0.22),
           letterSpacing: '0.14em',
-          color: '#F2B233',
-          textShadow: '0 0 18px rgba(242,178,51,.55), 0 0 30px rgba(46,168,255,.4)'
+          color: 'var(--gold-deep)',
+          textShadow: 'none'
         }}
       >
         SAMBHAV
@@ -111,7 +116,7 @@ export default function SambhavLogo({ size = 150, interactive = true }) {
             ? hovered
               ? 'drop-shadow(0 0 18px rgba(46,168,255,.7)) drop-shadow(0 0 30px rgba(242,178,51,.5))'
               : 'drop-shadow(0 0 10px rgba(46,168,255,.45)) drop-shadow(0 0 18px rgba(242,178,51,.3))'
-            : 'drop-shadow(0 0 6px rgba(46,168,255,.35))'
+            : 'none'
         }}
       />
     </span>

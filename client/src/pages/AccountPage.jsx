@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosClient from '../api/axiosClient';
 import { useToast } from '../components/ui/Toast';
 import { Card, Field, PageHead, Alert, Badge, Avatar, Spinner } from '../components/ui';
+import ProfileEditor from '../components/ProfileEditor';
 import { ROLE_LABEL, ROLE_TONE } from '../constants';
 import { KeyRound, Mail, ShieldCheck, Check } from 'lucide-react';
 
@@ -15,6 +16,23 @@ export default function AccountPage() {
   const [saving, setSaving] = useState(false);
   const [sentTo, setSentTo] = useState('');
   const [error, setError] = useState('');
+
+  const [pendingRequest, setPendingRequest] = useState(null);
+
+  const loadRequests = useCallback(async () => {
+    try {
+      const res = await axiosClient.get('/profile-requests');
+      if (res.success) {
+        setPendingRequest(res.requests.find(r => r.status === 'PENDING') || null);
+      }
+    } catch {
+      // Not fatal — the editor just will not know about a pending request.
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user.role !== 'ADMIN') loadRequests();
+  }, [user.role, loadRequests]);
 
   const [form, setForm] = useState({
     currentPassword: '',
@@ -93,44 +111,10 @@ export default function AccountPage() {
             </div>
           </div>
 
-          <table className="table" style={{ fontSize: 13 }}>
-            <tbody>
-              <tr>
-                <td className="t-dim" style={{ paddingLeft: 0 }}>Role</td>
-                <td style={{ paddingRight: 0, textAlign: 'right' }}>
-                  <Badge tone={ROLE_TONE[user.role] || 'mute'}>{ROLE_LABEL[user.role] || user.role}</Badge>
-                </td>
-              </tr>
-              <tr>
-                <td className="t-dim" style={{ paddingLeft: 0 }}>Team</td>
-                <td className="t-strong" style={{ paddingRight: 0, textAlign: 'right' }}>{user.department}</td>
-              </tr>
-              {user.academicDepartment && (
-                <tr>
-                  <td className="t-dim" style={{ paddingLeft: 0 }}>Heads department</td>
-                  <td className="t-strong" style={{ paddingRight: 0, textAlign: 'right' }}>
-                    {user.academicDepartment}
-                  </td>
-                </tr>
-              )}
-              <tr>
-                <td className="t-dim" style={{ paddingLeft: 0 }}>Position</td>
-                <td className="t-strong" style={{ paddingRight: 0, textAlign: 'right' }}>
-                  {user.position || 'Member'}
-                </td>
-              </tr>
-              <tr>
-                <td className="t-dim" style={{ paddingLeft: 0, borderBottom: 0 }}>Mobile</td>
-                <td className="t-strong" style={{ paddingRight: 0, textAlign: 'right', borderBottom: 0 }}>
-                  {user.mobileNumber || '—'}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-
-          <p className="t-dim" style={{ marginTop: 14 }}>
-            Ask an administrator to change your role, team or position.
-          </p>
+          <ProfileEditor
+            pendingRequest={pendingRequest}
+            onSubmitted={loadRequests}
+          />
         </Card>
 
         <Card title="Change password">

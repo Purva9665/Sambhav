@@ -99,7 +99,7 @@ const getAuditLogs = async (req, res) => {
 const updateUserRole = async (req, res) => {
   try {
     const { userId } = req.params;
-    const { role, status, department, academicDepartment, position } = req.body;
+    const { role, status, department, academicDepartment, position, mobileNumber } = req.body;
 
     if (role && !ROLES.includes(role)) {
       return res.status(400).json({ success: false, message: 'Unknown role.' });
@@ -121,13 +121,9 @@ const updateUserRole = async (req, res) => {
 
     const isSelf = String(user._id) === String(req.user._id);
 
-    // An admin must not be able to lock themselves out mid-session.
-    if (isSelf && role && role !== 'ADMIN') {
-      return res.status(400).json({
-        success: false,
-        message: 'You cannot remove your own admin role. Ask another administrator to do it.'
-      });
-    }
+    // An admin may edit their own role, team, position and mobile number.
+    // Suspending yourself is still refused: it locks you out immediately and
+    // there is no case where it is what you meant to do.
     if (isSelf && status && status !== 'ACTIVE') {
       return res.status(400).json({ success: false, message: 'You cannot suspend your own account.' });
     }
@@ -150,13 +146,15 @@ const updateUserRole = async (req, res) => {
       status: user.status,
       department: user.department,
       academicDepartment: user.academicDepartment,
-      position: user.position
+      position: user.position,
+      mobileNumber: user.mobileNumber
     };
 
     if (role) user.role = role;
     if (status) user.status = status;
     if (department) user.department = department;
     if (position) user.position = String(position).trim().slice(0, 80);
+    if (mobileNumber !== undefined) user.mobileNumber = String(mobileNumber).trim().slice(0, 24);
 
     // An explicit empty string clears the academic department, which is what
     // happens when someone stops being a department head.
@@ -169,7 +167,7 @@ const updateUserRole = async (req, res) => {
 
     await user.save();
 
-    const changes = Object.entries({ role, status, department, academicDepartment, position })
+    const changes = Object.entries({ role, status, department, academicDepartment, position, mobileNumber })
       .filter(([k, v]) => v !== undefined && before[k] !== user[k])
       .map(([k]) => `${k}: ${before[k] || '(none)'} → ${user[k] || '(none)'}`);
 
@@ -200,7 +198,8 @@ const updateUserRole = async (req, res) => {
         status: user.status,
         department: user.department,
         academicDepartment: user.academicDepartment,
-        position: user.position
+        position: user.position,
+        mobileNumber: user.mobileNumber
       }
     });
   } catch (err) {

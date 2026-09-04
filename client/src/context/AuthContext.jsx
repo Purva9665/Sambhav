@@ -63,6 +63,15 @@ export const AuthProvider = ({ children }) => {
     return () => { cancelled = true; };
   }, [token, logout]);
 
+  /** Merge fields into the signed-in user and persist, so a reload agrees. */
+  const updateUser = useCallback((patch) => {
+    setUser(current => {
+      const next = { ...current, ...patch, id: current.id };
+      localStorage.setItem(USER_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const loginUser = useCallback((userData, userToken) => {
     setExpiredNotice('');
     localStorage.setItem(USER_KEY, JSON.stringify(userData));
@@ -73,7 +82,7 @@ export const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider
-      value={{ user, token, loading, loginUser, logout, setUser, expiredNotice, setExpiredNotice }}
+      value={{ user, token, loading, loginUser, logout, setUser, updateUser, expiredNotice, setExpiredNotice }}
     >
       {children}
     </AuthContext.Provider>

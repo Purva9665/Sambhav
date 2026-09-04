@@ -141,7 +141,7 @@ export default function DirectoryPage({ query }) {
                             {u.fullName}
                             {isSelf && <span className="t-dim"> (you)</span>}
                             {u.role === 'ADMIN' && (
-                              <Crown size={12} style={{ marginLeft: 6, color: 'var(--brand-orange)' }} />
+                              <Crown size={12} style={{ marginLeft: 6, color: 'var(--gold)' }} />
                             )}
                           </div>
                           <div className="t-dim truncate">{u.email}</div>
@@ -153,8 +153,8 @@ export default function DirectoryPage({ query }) {
                       <select
                         className="select select-sm"
                         value={u.role}
-                        disabled={busy || isSelf}
-                        title={isSelf ? 'You cannot change your own role' : undefined}
+                        disabled={busy}
+                        title={isSelf ? 'Changing your own role takes effect immediately' : undefined}
                         onChange={(e) => patch(u._id, { role: e.target.value },
                           `${u.fullName} is now ${ROLE_LABEL[e.target.value]}.`)}
                       >
@@ -219,6 +219,7 @@ export default function DirectoryPage({ query }) {
                         className="select select-sm"
                         value={u.status}
                         disabled={busy || isSelf}
+                        title={isSelf ? 'You cannot suspend your own account' : undefined}
                         onChange={(e) => patch(u._id, { status: e.target.value },
                           `${u.fullName} is now ${e.target.value.replace('_', ' ').toLowerCase()}.`)}
                       >

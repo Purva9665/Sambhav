@@ -5,7 +5,7 @@ import { ROLE_LABEL, ROLES } from '../constants';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, CalendarCheck,
   Users, BookUser, Megaphone, FileText, ShieldAlert, LogOut, Lock,
-  Building2, UserCog
+  Building2, UserCog, Inbox
 } from 'lucide-react';
 
 /** Everyone who can sign in. Listing this once stops a new role from silently
@@ -24,7 +24,8 @@ const MENU = [
 ];
 
 const GENERAL = [
-  { id: 'account',    label: 'My Account',     icon: UserCog,     roles: EVERYONE },
+  { id: 'account',         label: 'My Account',      icon: UserCog, roles: EVERYONE },
+  { id: 'change-requests', label: 'Change Requests', icon: Inbox,   roles: EVERYONE },
   { id: 'directory',  label: 'Team Directory', icon: BookUser,    roles: ['ADMIN'], restricted: true },
   { id: 'audit-logs', label: 'Audit Logs',     icon: ShieldAlert, roles: ['ADMIN'], restricted: true }
 ];
@@ -62,9 +63,9 @@ export default function Sidebar({ currentPage, onNavigate, counts, isOpen, onClo
   return (
     <aside className={`sidebar${isOpen ? ' is-open' : ''}`}>
       <div className="sidebar-brand">
-        {/* Dark plate: the logo artwork is largely white and needs a dark backdrop */}
+        {/* No plate: the mark sits directly on the page */}
         <div className="logo-plate">
-          <SambhavLogo size={36} interactive={false} />
+          <SambhavLogo size={34} interactive={false} mark />
           <div>
             <div className="logo-wordmark">SAMBHAV</div>
             <div className="logo-sub">PORTAL</div>
@@ -98,12 +99,12 @@ export default function Sidebar({ currentPage, onNavigate, counts, isOpen, onClo
             {user.position || 'Member'} · {ROLE_LABEL[user.role] || user.role}
             {user.academicDepartment && <> · Heads {user.academicDepartment}</>}
           </div>
-          <div className="motto" style={{ fontSize: 9, letterSpacing: '0.16em', marginTop: 0, gap: 7 }}>
-            <span style={{ color: '#F2B233' }}>INITIATE</span>
-            <span className="motto-dot">•</span>
-            <span style={{ color: '#2EA8FF' }}>CONNECT</span>
-            <span className="motto-dot">•</span>
-            <span style={{ color: '#FF6B2C' }}>EVOLVE</span>
+          <div className="motto motto-inline">
+            <span style={{ color: 'var(--gold-deep)' }}>INITIATE</span>
+            <span className="motto-dot">·</span>
+            <span style={{ color: 'var(--cyan-deep)' }}>CONNECT</span>
+            <span className="motto-dot">·</span>
+            <span style={{ color: 'var(--orange-deep)' }}>EVOLVE</span>
           </div>
         </div>
       </div>
