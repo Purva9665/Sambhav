@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
-import { Card, Badge, Empty, Loading, PageHead, Stat } from '../components/ui';
+import { Card, Badge, Empty, Loading, PageHead, Stat, Modal, Field, Alert } from '../components/ui';
+import { useToast } from '../components/ui/Toast';
 import { matches } from '../constants';
-import { ShieldAlert, Lock, Download } from 'lucide-react';
+import { ShieldAlert, Lock, Download, Trash2 } from 'lucide-react';
 
 const ACTIONS = [
   'REGISTER_REQUEST', 'OTP_VERIFIED', 'LOGIN_SUCCESS', 'LOGIN_FAILED',
@@ -44,25 +45,50 @@ const toneOf = (action) => {
 };
 
 export default function AuditLogsPage({ query }) {
+  const toast = useToast();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [action, setAction] = useState('ALL');
+  const [clearing, setClearing] = useState(false);
+  const [scope, setScope] = useState('90');
+  const [busy, setBusy] = useState(false);
+  const [exported, setExported] = useState(false);
+
+  const load = React.useCallback(async () => {
+    try {
+      const res = await axiosClient.get('/admin/audit-logs');
+      if (res.success) setLogs(res.logs);
+    } catch (err) {
+      setError(err.message || 'Audit logs are restricted to administrators.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clearLogs = async () => {
+    setBusy(true);
+    try {
+      const path = scope === 'ALL'
+        ? '/admin/audit-logs'
+        : `/admin/audit-logs?days=${scope}`;
+      const res = await axiosClient.delete(path);
+      if (res.success) {
+        toast.success(res.message);
+        setClearing(false);
+        setExported(false);
+        load();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Could not clear the audit log.');
+    } finally {
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await axiosClient.get('/admin/audit-logs');
-        if (!cancelled && res.success) setLogs(res.logs);
-      } catch (err) {
-        if (!cancelled) setError(err.message || 'Audit logs are restricted to administrators.');
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    load();
+  }, [load]);
 
   const visible = logs.filter(l =>
     (action === 'ALL' || l.action === action) &&
@@ -94,11 +120,19 @@ export default function AuditLogsPage({ query }) {
             </select>
             <button
               className="btn btn-secondary"
-              onClick={() => exportCsv(visible)}
+              onClick={() => { exportCsv(visible); setExported(true); }}
               disabled={visible.length === 0}
               title="Download the events shown as CSV"
             >
               <Download size={16} /> Export CSV
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => setClearing(true)}
+              disabled={logs.length === 0}
+              title="Delete audit entries"
+            >
+              <Trash2 size={16} /> Clear logs
             </button>
           </>
         }
@@ -159,6 +193,54 @@ export default function AuditLogsPage({ query }) {
             </tbody>
           </table>
         </div>
+      )}
+      {clearing && (
+        <Modal
+          title="Clear audit log"
+          onClose={() => setClearing(false)}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setClearing(false)} disabled={busy}>
+                Cancel
+              </button>
+              <button className="btn btn-danger" onClick={clearLogs} disabled={busy}>
+                {busy ? 'Deleting…' : <><Trash2 size={16} /> Delete permanently</>}
+              </button>
+            </>
+          }
+        >
+          <Alert tone="warn">
+            <ShieldAlert size={17} style={{ flexShrink: 0, marginTop: 1 }} />
+            <div>
+              This cannot be undone. Export first if you need to keep the history —
+              deleted entries are gone for good.
+            </div>
+          </Alert>
+
+          <Field label="What should be deleted?">
+            <select className="select" value={scope} onChange={(e) => setScope(e.target.value)}>
+              <option value="90">Entries older than 90 days</option>
+              <option value="30">Entries older than 30 days</option>
+              <option value="7">Entries older than 7 days</option>
+              <option value="ALL">Everything</option>
+            </select>
+          </Field>
+
+          {!exported && (
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => { exportCsv(logs); setExported(true); }}
+            >
+              <Download size={14} /> Export all {logs.length} first
+            </button>
+          )}
+          {exported && <p className="t-dim">Exported. Safe to delete.</p>}
+
+          <p className="t-dim" style={{ marginTop: 14 }}>
+            A single entry recording this deletion is kept, so the clear itself
+            stays on the record.
+          </p>
+        </Modal>
       )}
     </>
   );

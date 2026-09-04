@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   createUser, getMemberList, getTeamDirectory, getDepartmentHeads,
-  getAuditLogs, updateUserRole
+  getAuditLogs, clearAuditLogs, updateUserRole
 } = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/auth');
 const { authorizeRoles } = require('../middleware/rbac');
@@ -19,6 +19,9 @@ router.get('/directory', authenticateToken, authorizeRoles('ADMIN'), getTeamDire
 
 // Security audit trail: admin only
 router.get('/audit-logs', authenticateToken, authorizeRoles('ADMIN'), getAuditLogs);
+
+// Delete audit entries, optionally only those older than ?days=N: admin only
+router.delete('/audit-logs', authenticateToken, authorizeRoles('ADMIN'), clearAuditLogs);
 
 // Create an account directly, any role including ADMIN: admin only
 router.post('/users', authenticateToken, authorizeRoles('ADMIN'), createUser);

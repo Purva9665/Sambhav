@@ -319,7 +319,58 @@ const createUser = async (req, res) => {
   }
 };
 
+/**
+ * Delete audit entries.
+ * Route: DELETE /api/v1/admin/audit-logs?days=N   (admin only)
+ *
+ * `days=N` removes entries older than N days; omitting it removes everything.
+ *
+ * Clearing the security trail is itself a security event, so a single entry
+ * recording who did it — and how much went — is written immediately after.
+ * That entry is the one thing a clear cannot erase.
+ */
+const clearAuditLogs = async (req, res) => {
+  try {
+    const days = req.query.days ? Number(req.query.days) : null;
+
+    if (days !== null && (!Number.isFinite(days) || days < 0)) {
+      return res.status(400).json({ success: false, message: 'days must be a positive number.' });
+    }
+
+    const cutoff = days ? new Date(Date.now() - days * 86400000) : null;
+    const filter = cutoff ? { timestamp: { $lt: cutoff } } : {};
+
+    const matching = await AuditLog.countDocuments(filter);
+    const result = await AuditLog.deleteMany(filter);
+
+    await logAuditEvent({
+      action: 'AUDIT_LOGS_CLEARED',
+      req,
+      actorUser: req.user,
+      targetResource: 'AuditLog',
+      details: {
+        deleted: result.deletedCount,
+        scope: cutoff ? `older than ${days} day(s)` : 'all entries',
+        cutoff: cutoff ? cutoff.toISOString() : null
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      deleted: result.deletedCount,
+      message: result.deletedCount === 0
+        ? 'There was nothing to delete.'
+        : `Deleted ${result.deletedCount} entr${result.deletedCount === 1 ? 'y' : 'ies'}.`,
+      matched: matching
+    });
+  } catch (err) {
+    console.error('[CLEAR AUDIT ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Could not clear the audit log.' });
+  }
+};
+
 module.exports = {
+  clearAuditLogs,
   createUser,
   getMemberList,
   getTeamDirectory,
