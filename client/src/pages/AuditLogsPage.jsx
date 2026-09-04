@@ -2,14 +2,38 @@ import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
 import { Card, Badge, Empty, Loading, PageHead, Stat } from '../components/ui';
 import { matches } from '../constants';
-import { ShieldAlert, Lock } from 'lucide-react';
+import { ShieldAlert, Lock, Download } from 'lucide-react';
 
 const ACTIONS = [
   'REGISTER_REQUEST', 'OTP_VERIFIED', 'LOGIN_SUCCESS', 'LOGIN_FAILED',
   'ACCESS_DENIED', 'ROLE_CHANGE', 'DIRECTORY_ACCESSED', 'ATTENDANCE_MARKED',
   'PROJECT_CREATED', 'PROJECT_UPDATED', 'TASK_ASSIGNED', 'TASK_STATUS_UPDATED',
-  'ANNOUNCEMENT_POSTED', 'LEAVE_SUBMITTED', 'LEAVE_REVIEWED'
+  'ANNOUNCEMENT_POSTED', 'LEAVE_SUBMITTED', 'LEAVE_REVIEWED',
+  'PASSWORD_CHANGED', 'ADMIN_GRANTED', 'ADMIN_REVOKED', 'USER_CREATED',
+  'PROFILE_CHANGE_REQUESTED', 'PROFILE_CHANGE_APPROVED', 'PROFILE_CHANGE_REJECTED'
 ];
+
+const csvCell = (v) => {
+  const s = v == null ? '' : typeof v === 'object' ? JSON.stringify(v) : String(v);
+  return `"${s.replace(/"/g, '""')}"`;
+};
+
+/** Download what is currently on screen, so a period can be kept before purging. */
+function exportCsv(rows) {
+  const columns = ['timestamp', 'action', 'actorEmail', 'actorRole',
+                   'targetResource', 'ipAddress', 'userAgent', 'details'];
+  const csv = [
+    columns.join(','),
+    ...rows.map(r => columns.map(c => csvCell(r[c])).join(','))
+  ].join('\r\n');
+
+  const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `sambhav-audit-${new Date().toISOString().slice(0, 10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 const toneOf = (action) => {
   if (action.includes('FAILED') || action.includes('DENIED')) return 'err';
@@ -64,10 +88,18 @@ export default function AuditLogsPage({ query }) {
         actions={
           <>
             <Badge tone="orange"><Lock size={11} /> ADMIN ONLY</Badge>
-            <select className="select" style={{ width: 220 }} value={action} onChange={(e) => setAction(e.target.value)}>
+            <select className="select" style={{ width: 200 }} value={action} onChange={(e) => setAction(e.target.value)}>
               <option value="ALL">All events</option>
               {ACTIONS.map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
             </select>
+            <button
+              className="btn btn-secondary"
+              onClick={() => exportCsv(visible)}
+              disabled={visible.length === 0}
+              title="Download the events shown as CSV"
+            >
+              <Download size={16} /> Export CSV
+            </button>
           </>
         }
       />
@@ -78,6 +110,12 @@ export default function AuditLogsPage({ query }) {
         <Stat label="Unique Actors" value={new Set(logs.map(l => l.actorEmail)).size} foot="Distinct accounts" />
         <Stat label="Unique IPs" value={new Set(logs.map(l => l.ipAddress)).size} foot="Source addresses" />
       </div>
+
+      <p className="t-dim mb-16">
+        Entries are kept for 90 days and removed automatically after that.
+        Repeated directory views and failed sign-ins from the same person are
+        folded into one entry with a count, rather than one row each.
+      </p>
 
       {loading ? (
         <Loading label="Loading audit trail…" />

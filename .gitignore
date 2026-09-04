@@ -35,3 +35,6 @@ coverage/
 
 # Database backups (contain personal data)
 server/backups/
+
+# Database and audit exports (contain personal data)
+server/audit-exports/

@@ -8,6 +8,7 @@ const rateLimit = require('express-rate-limit');
 const bcrypt = require('bcryptjs');
 
 const User = require('./models/User');
+const AuditLog = require('./models/AuditLog');
 const { reportEmailConfig } = require('./utils/emailService');
 const { ZONE } = require('./utils/dates');
 
@@ -210,6 +211,7 @@ async function start() {
   try {
     await mongoose.connect(process.env.MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
     console.log('[DATABASE] Connected.');
+    await AuditLog.syncRetention();
     await bootstrapAdmin();
   } catch (err) {
     // Starting without a database would serve 500s on every request and make
