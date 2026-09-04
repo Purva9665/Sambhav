@@ -1,106 +1,120 @@
 import React, { useEffect, useState } from 'react';
 import axiosClient from '../api/axiosClient';
-import { ShieldAlert, Lock, Terminal, Filter } from 'lucide-react';
+import { Card, Badge, Empty, Loading, PageHead, Stat } from '../components/ui';
+import { matches } from '../constants';
+import { ShieldAlert, Lock } from 'lucide-react';
 
-export default function AuditLogsPage() {
+const ACTIONS = [
+  'REGISTER_REQUEST', 'OTP_VERIFIED', 'LOGIN_SUCCESS', 'LOGIN_FAILED',
+  'ACCESS_DENIED', 'ROLE_CHANGE', 'DIRECTORY_ACCESSED', 'ATTENDANCE_MARKED',
+  'PROJECT_CREATED', 'PROJECT_UPDATED', 'TASK_ASSIGNED', 'TASK_STATUS_UPDATED',
+  'ANNOUNCEMENT_POSTED', 'LEAVE_SUBMITTED', 'LEAVE_REVIEWED'
+];
+
+const toneOf = (action) => {
+  if (action.includes('FAILED') || action.includes('DENIED')) return 'err';
+  if (action.includes('SUCCESS') || action.includes('VERIFIED')) return 'ok';
+  if (action.includes('ROLE')) return 'orange';
+  if (action.includes('ACCESSED')) return 'gold';
+  return 'cyan';
+};
+
+export default function AuditLogsPage({ query }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [filterAction, setFilterAction] = useState('ALL');
+  const [action, setAction] = useState('ALL');
 
   useEffect(() => {
-    const fetchAuditLogs = async () => {
+    let cancelled = false;
+    (async () => {
       try {
         const res = await axiosClient.get('/admin/audit-logs');
-        if (res.success) {
-          setLogs(res.logs);
-        }
+        if (!cancelled && res.success) setLogs(res.logs);
       } catch (err) {
-        setError(err.message || 'Access Denied: Security Audit Logs are restricted to Admin.');
+        if (!cancelled) setError(err.message || 'Audit logs are restricted to administrators.');
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
-    };
-    fetchAuditLogs();
+    })();
+    return () => { cancelled = true; };
   }, []);
 
-  const filteredLogs = filterAction === 'ALL' ? logs : logs.filter(l => l.action === filterAction);
+  const visible = logs.filter(l =>
+    (action === 'ALL' || l.action === action) &&
+    matches(query, l.actorEmail, l.action, l.ipAddress, l.targetResource, l.actorRole)
+  );
+
+  const failures = logs.filter(l => l.action.includes('FAILED') || l.action.includes('DENIED')).length;
+
+  if (error) {
+    return (
+      <>
+        <PageHead title="Audit Logs" />
+        <Card><Empty icon={ShieldAlert} title="Access restricted" text={error} /></Card>
+      </>
+    );
+  }
 
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <h2 style={{ fontSize: '26px', color: '#FFFFFF' }}>Security Audit Logs</h2>
-            <span className="badge badge-orange">
-              <Lock size={12} /> REAL-TIME SECURITY MONITOR
-            </span>
-          </div>
-          <p style={{ color: '#94A3B8', fontSize: '13px' }}>
-            System event log capturing authentication, IP addresses, user agents, and administrative actions.
-          </p>
-        </div>
+    <>
+      <PageHead
+        title="Audit Logs"
+        subtitle="Authentication, privilege changes and administrative actions."
+        actions={
+          <>
+            <Badge tone="orange"><Lock size={11} /> ADMIN ONLY</Badge>
+            <select className="select" style={{ width: 220 }} value={action} onChange={(e) => setAction(e.target.value)}>
+              <option value="ALL">All events</option>
+              {ACTIONS.map(a => <option key={a} value={a}>{a.replace(/_/g, ' ')}</option>)}
+            </select>
+          </>
+        }
+      />
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          <Filter size={16} color="#00A3FF" />
-          <select 
-            className="form-select" 
-            style={{ padding: '8px 14px', fontSize: '12px' }}
-            value={filterAction} 
-            onChange={(e) => setFilterAction(e.target.value)}
-          >
-            <option value="ALL">All Event Types</option>
-            <option value="REGISTER_REQUEST">REGISTER_REQUEST</option>
-            <option value="OTP_VERIFIED">OTP_VERIFIED</option>
-            <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
-            <option value="LOGIN_FAILED">LOGIN_FAILED</option>
-            <option value="ROLE_CHANGE">ROLE_CHANGE</option>
-            <option value="DIRECTORY_ACCESSED">DIRECTORY_ACCESSED</option>
-            <option value="TASK_ASSIGNED">TASK_ASSIGNED</option>
-          </select>
-        </div>
+      <div className="grid grid-4 mb-16">
+        <Stat feature label="Events Recorded" value={logs.length} foot="Most recent 200" />
+        <Stat label="Failed / Denied" value={failures} foot="Security relevant" />
+        <Stat label="Unique Actors" value={new Set(logs.map(l => l.actorEmail)).size} foot="Distinct accounts" />
+        <Stat label="Unique IPs" value={new Set(logs.map(l => l.ipAddress)).size} foot="Source addresses" />
       </div>
 
-      {error ? (
-        <div className="glass-card" style={{ border: '1px solid #F87171', padding: '30px', textAlign: 'center' }}>
-          <ShieldAlert size={48} color="#F87171" style={{ marginBottom: '12px' }} />
-          <h3 style={{ color: '#F87171', fontSize: '20px', marginBottom: '8px' }}>Security Boundary Enforcement</h3>
-          <p style={{ color: '#94A3B8' }}>{error}</p>
-        </div>
-      ) : loading ? (
-        <p style={{ color: '#94A3B8' }}>Loading audit log stream...</p>
+      {loading ? (
+        <Loading label="Loading audit trail…" />
+      ) : visible.length === 0 ? (
+        <Card>
+          <Empty icon={ShieldAlert} title={query || action !== 'ALL' ? 'No matching events' : 'No events yet'} />
+        </Card>
       ) : (
-        <div className="table-container">
-          <table className="cyber-table">
+        <div className="table-wrap">
+          <table className="table">
             <thead>
               <tr>
-                <th>Timestamp</th>
-                <th>Action Event</th>
-                <th>Actor Email</th>
+                <th>Time</th>
+                <th>Event</th>
+                <th>Actor</th>
                 <th>Role</th>
-                <th>IP Address</th>
-                <th>Target / Details</th>
+                <th>IP</th>
+                <th>Target</th>
               </tr>
             </thead>
             <tbody>
-              {filteredLogs.map(l => (
+              {visible.map(l => (
                 <tr key={l._id}>
-                  <td style={{ fontSize: '12px', color: '#94A3B8' }}>{new Date(l.timestamp).toLocaleString()}</td>
-                  <td>
-                    <span className={`badge ${
-                      l.action.includes('FAILED') ? 'badge-red' :
-                      l.action.includes('SUCCESS') || l.action.includes('VERIFIED') ? 'badge-green' :
-                      l.action.includes('ROLE') ? 'badge-orange' : 'badge-cyan'
-                    }`}>
-                      {l.action}
-                    </span>
+                  <td className="t-dim" style={{ whiteSpace: 'nowrap' }}>
+                    {new Date(l.timestamp).toLocaleString()}
                   </td>
-                  <td style={{ fontWeight: 'bold', color: '#FFFFFF' }}>{l.actorEmail}</td>
-                  <td><span className="badge badge-gold">{l.actorRole}</span></td>
-                  <td style={{ fontFamily: 'monospace', color: '#00A3FF' }}>{l.ipAddress}</td>
-                  <td style={{ fontSize: '12px', color: '#94A3B8', maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                    {l.targetResource && <div><strong>Target:</strong> {l.targetResource}</div>}
-                    <div style={{ fontSize: '11px', color: '#64748B' }}>{JSON.stringify(l.details)}</div>
+                  <td><Badge tone={toneOf(l.action)}>{l.action.replace(/_/g, ' ')}</Badge></td>
+                  <td className="t-strong">{l.actorEmail}</td>
+                  <td className="t-mute">{l.actorRole}</td>
+                  <td className="t-mono">{l.ipAddress}</td>
+                  <td style={{ maxWidth: 280 }}>
+                    {l.targetResource && <div className="t-mute truncate">{l.targetResource}</div>}
+                    {l.details && Object.keys(l.details).length > 0 && (
+                      <div className="t-dim truncate" title={JSON.stringify(l.details)}>
+                        {JSON.stringify(l.details)}
+                      </div>
+                    )}
                   </td>
                 </tr>
               ))}
@@ -108,6 +122,6 @@ export default function AuditLogsPage() {
           </table>
         </div>
       )}
-    </div>
+    </>
   );
 }

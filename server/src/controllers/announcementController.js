@@ -3,6 +3,21 @@ const User = require('../models/User');
 const { sendEmail } = require('../utils/emailService');
 const { logAuditEvent } = require('../utils/auditHelper');
 
+const emailTemplate = ({ title, content, author }) => `
+  <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;border:1px solid #E2E5EA">
+    <div style="background:#0E1524;padding:20px 24px">
+      <div style="color:#fff;font-size:18px;font-weight:700;letter-spacing:2px">SAMBHAV</div>
+      <div style="color:#8A929F;font-size:11px;letter-spacing:3px;margin-top:2px">ANNOUNCEMENT</div>
+    </div>
+    <div style="padding:24px">
+      <h2 style="margin:0 0 12px;font-size:18px;color:#14181F">${title}</h2>
+      <p style="color:#59616E;font-size:14px;line-height:1.6;white-space:pre-wrap">${content}</p>
+      <hr style="border:0;border-top:1px solid #E2E5EA;margin:20px 0" />
+      <p style="color:#8A929F;font-size:12px;margin:0">Posted by ${author} on the SAMBHAV portal.</p>
+    </div>
+  </div>
+`;
+
 // Get active banners for current user
 const getMyAnnouncements = async (req, res) => {
   try {
@@ -17,7 +32,7 @@ const getMyAnnouncements = async (req, res) => {
     // Filter announcements targeting this specific user/department/role
     const userAnnouncements = announcements.filter(ann => {
       if (ann.audienceType === 'ALL') return true;
-      if (ann.audienceType === 'HEADS' && req.user.role === 'TEAM_HEAD') return true;
+      if (ann.audienceType === 'HEADS' && ['TEAM_HEAD', 'DEPARTMENT_HEAD'].includes(req.user.role)) return true;
       if (ann.audienceType === 'DEPARTMENT' && ann.audienceTargets.includes(req.user.department)) return true;
       if (ann.audienceType === 'INDIVIDUALS' && ann.audienceTargets.includes(req.user._id.toString())) return true;
       return false;
@@ -51,36 +66,32 @@ const createAnnouncement = async (req, res) => {
       expiresAt: expiresAt ? new Date(expiresAt) : null
     });
 
-    // If EMAIL channel is checked, resolve recipient emails and send!
-    if (selectedChannels.includes('EMAIL')) {
-      let recipientQuery = { status: 'ACTIVE' };
+    // Email fan-out. Delivery is reported back so the UI can tell the admin
+    // when SendGrid rejected the send instead of silently claiming success.
+    let emailReport = null;
 
-      if (audienceType === 'HEADS') {
-        recipientQuery.role = 'TEAM_HEAD';
-      } else if (audienceType === 'DEPARTMENT') {
-        recipientQuery.department = { $in: audienceTargets };
-      } else if (audienceType === 'INDIVIDUALS') {
-        recipientQuery._id = { $in: audienceTargets };
-      }
+    if (selectedChannels.includes('EMAIL')) {
+      const recipientQuery = { status: 'ACTIVE' };
+
+      if (audienceType === 'HEADS') recipientQuery.role = { $in: ['TEAM_HEAD', 'DEPARTMENT_HEAD'] };
+      else if (audienceType === 'DEPARTMENT') recipientQuery.department = { $in: audienceTargets };
+      else if (audienceType === 'INDIVIDUALS') recipientQuery._id = { $in: audienceTargets };
 
       const targetUsers = await User.find(recipientQuery).select('email fullName');
 
-      for (const u of targetUsers) {
-        const emailHtml = `
-          <div style="font-family: Arial, sans-serif; background: #0A0D14; color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #00A3FF;">
-            <h2 style="color: #00A3FF; margin-top: 0;">📢 SAMBHAV Announcement: ${title}</h2>
-            <p style="font-size: 15px; line-height: 1.6;">${content}</p>
-            <hr style="border-color: rgba(255,255,255,0.1); margin: 20px 0;" />
-            <p style="color: #94A3B8; font-size: 12px;">Posted by Admin (${req.user.fullName}) on SAMBHAV Employee Portal.</p>
-          </div>
-        `;
+      const results = await Promise.all(
+        targetUsers.map(u =>
+          sendEmail({
+            to: u.email,
+            subject: `[SAMBHAV] ${title}`,
+            htmlText: emailTemplate({ title, content, author: req.user.fullName })
+          })
+        )
+      );
 
-        await sendEmail({
-          to: u.email,
-          subject: `[SAMBHAV ANNOUNCEMENT] ${title}`,
-          htmlText: emailHtml
-        });
-      }
+      const delivered = results.filter(r => r.delivered).length;
+      emailReport = { attempted: results.length, delivered, failed: results.length - delivered };
+      console.log(`[ANNOUNCEMENT] Email: ${delivered}/${results.length} delivered.`);
     }
 
     await logAuditEvent({
@@ -91,7 +102,12 @@ const createAnnouncement = async (req, res) => {
       details: { title, channels: selectedChannels, audienceType, audienceTargets }
     });
 
-    return res.status(201).json({ success: true, message: 'Announcement published successfully.', announcement });
+    return res.status(201).json({
+      success: true,
+      message: 'Announcement published.',
+      email: emailReport,
+      announcement
+    });
   } catch (err) {
     console.error(`[ANNOUNCEMENT ERROR]`, err);
     return res.status(500).json({ success: false, message: 'Failed to post announcement.' });

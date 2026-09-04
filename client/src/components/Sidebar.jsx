@@ -1,87 +1,112 @@
 import React from 'react';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, 
-  FolderKanban, 
-  CheckSquare, 
-  CalendarCheck, 
-  Users, 
-  ShieldAlert, 
-  Megaphone, 
-  FileText,
-  Lock
+import SambhavLogo from './SambhavLogo';
+import { ROLE_LABEL, ROLES } from '../constants';
+import {
+  LayoutDashboard, FolderKanban, CheckSquare, CalendarCheck,
+  Users, BookUser, Megaphone, FileText, ShieldAlert, LogOut, Lock,
+  Building2, UserCog
 } from 'lucide-react';
 
-export default function Sidebar({ currentPage, setCurrentPage }) {
-  const { user } = useAuth();
+/** Everyone who can sign in. Listing this once stops a new role from silently
+ *  losing access to the whole menu. */
+const EVERYONE = ROLES;
+
+const MENU = [
+  { id: 'dashboard',        label: 'Dashboard',        icon: LayoutDashboard, roles: EVERYONE },
+  { id: 'attendance',       label: 'Attendance',       icon: CalendarCheck,   roles: EVERYONE },
+  { id: 'projects',         label: 'Projects',         icon: FolderKanban,    roles: EVERYONE },
+  { id: 'tasks',            label: 'Task Board',       icon: CheckSquare,     roles: EVERYONE },
+  { id: 'members',          label: 'Members',          icon: Users,           roles: ['ADMIN', 'DEPARTMENT_HEAD', 'TEAM_HEAD'] },
+  { id: 'department-heads', label: 'Department Heads', icon: Building2,       roles: EVERYONE },
+  { id: 'announcements',    label: 'Announcements',    icon: Megaphone,       roles: EVERYONE },
+  { id: 'leave',            label: 'Leave',            icon: FileText,        roles: EVERYONE }
+];
+
+const GENERAL = [
+  { id: 'account',    label: 'My Account',     icon: UserCog,     roles: EVERYONE },
+  { id: 'directory',  label: 'Team Directory', icon: BookUser,    roles: ['ADMIN'], restricted: true },
+  { id: 'audit-logs', label: 'Audit Logs',     icon: ShieldAlert, roles: ['ADMIN'], restricted: true }
+];
+
+function NavList({ items, role, current, onNavigate, counts }) {
+  return items
+    .filter(item => item.roles.includes(role))
+    .map(item => {
+      const Icon = item.icon;
+      const active = current === item.id;
+      const count = counts?.[item.id];
+
+      return (
+        <button
+          key={item.id}
+          className={`nav-item${active ? ' is-active' : ''}`}
+          onClick={() => onNavigate(item.id)}
+          aria-current={active ? 'page' : undefined}
+        >
+          <Icon size={18} strokeWidth={active ? 2.2 : 1.8} />
+          <span className="nav-item-label">{item.label}</span>
+          {count > 0 && <span className="nav-count">{count > 99 ? '99+' : count}</span>}
+          {item.restricted && !count && <span className="nav-lock"><Lock size={8} /> ADMIN</span>}
+        </button>
+      );
+    });
+}
+
+export default function Sidebar({ currentPage, onNavigate, counts, isOpen, onClose }) {
+  const { user, logout } = useAuth();
   if (!user) return null;
 
-  const navItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['ADMIN', 'TEAM_HEAD', 'TEAM_MEMBER'] },
-    { id: 'projects', label: 'Projects', icon: FolderKanban, roles: ['ADMIN', 'TEAM_HEAD', 'TEAM_MEMBER'] },
-    { id: 'tasks', label: 'Task Board', icon: CheckSquare, roles: ['ADMIN', 'TEAM_HEAD', 'TEAM_MEMBER'] },
-    { id: 'attendance', label: 'Attendance', icon: CalendarCheck, roles: ['ADMIN', 'TEAM_HEAD', 'TEAM_MEMBER'] },
-    { id: 'members', label: 'Member List', icon: Users, roles: ['ADMIN', 'TEAM_HEAD'] },
-    { id: 'directory', label: 'Team Directory', icon: Lock, roles: ['ADMIN'], restricted: true },
-    { id: 'announcements', label: 'Announcements', icon: Megaphone, roles: ['ADMIN', 'TEAM_HEAD', 'TEAM_MEMBER'] },
-    { id: 'leave', label: 'Leave Requests', icon: FileText, roles: ['ADMIN', 'TEAM_HEAD', 'TEAM_MEMBER'] },
-    { id: 'audit-logs', label: 'Security Audit Logs', icon: ShieldAlert, roles: ['ADMIN'], restricted: true },
-  ];
-
-  const visibleItems = navItems.filter(item => item.roles.includes(user.role));
+  const go = (id) => { onNavigate(id); onClose?.(); };
 
   return (
-    <aside style={{
-      width: '240px',
-      background: 'rgba(10, 13, 20, 0.95)',
-      borderRight: '1px solid rgba(255, 255, 255, 0.08)',
-      padding: '24px 14px',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '8px',
-      minHeight: 'calc(100vh - 70px)'
-    }}>
-      <div style={{ padding: '0 12px 12px', fontSize: '11px', fontWeight: 800, color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-        Navigation Workspace
+    <aside className={`sidebar${isOpen ? ' is-open' : ''}`}>
+      <div className="sidebar-brand">
+        {/* Dark plate: the logo artwork is largely white and needs a dark backdrop */}
+        <div className="logo-plate">
+          <SambhavLogo size={36} interactive={false} />
+          <div>
+            <div className="logo-wordmark">SAMBHAV</div>
+            <div className="logo-sub">PORTAL</div>
+          </div>
+        </div>
       </div>
 
-      {visibleItems.map(item => {
-        const Icon = item.icon;
-        const isActive = currentPage === item.id;
+      <nav className="nav-group">
+        <div className="nav-group-label">Menu</div>
+        <NavList items={MENU} role={user.role} current={currentPage} onNavigate={go} counts={counts} />
+      </nav>
 
-        return (
-          <button
-            key={item.id}
-            onClick={() => setCurrentPage(item.id)}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              width: '100%',
-              padding: '12px 16px',
-              borderRadius: '10px',
-              border: isActive ? '1px solid rgba(0, 163, 255, 0.4)' : '1px solid transparent',
-              background: isActive ? 'linear-gradient(90deg, rgba(0, 163, 255, 0.15), transparent)' : 'transparent',
-              color: isActive ? '#00A3FF' : '#94A3B8',
-              fontWeight: isActive ? 700 : 500,
-              fontSize: '14px',
-              cursor: 'pointer',
-              transition: 'all 0.2s ease',
-              textAlign: 'left'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              <Icon size={18} color={isActive ? '#00A3FF' : item.restricted ? '#FF6B35' : '#94A3B8'} />
-              <span>{item.label}</span>
-            </div>
-            {item.restricted && (
-              <span style={{ fontSize: '9px', background: 'rgba(255,107,53,0.2)', color: '#FF6B35', padding: '2px 6px', borderRadius: '4px', border: '1px solid rgba(255,107,53,0.4)' }}>
-                ADMIN
-              </span>
-            )}
-          </button>
-        );
-      })}
+      {GENERAL.some(i => i.roles.includes(user.role)) && (
+        <nav className="nav-group">
+          <div className="nav-group-label">General</div>
+          <NavList items={GENERAL} role={user.role} current={currentPage} onNavigate={go} />
+        </nav>
+      )}
+
+      <div className="nav-group">
+        <button className="nav-item" onClick={logout}>
+          <LogOut size={18} strokeWidth={1.8} />
+          <span className="nav-item-label">Logout</span>
+        </button>
+      </div>
+
+      <div className="sidebar-foot">
+        <div className="side-card">
+          <div className="side-card-title">{user.department}</div>
+          <div className="side-card-text">
+            {user.position || 'Member'} · {ROLE_LABEL[user.role] || user.role}
+            {user.academicDepartment && <> · Heads {user.academicDepartment}</>}
+          </div>
+          <div className="motto" style={{ fontSize: 9, letterSpacing: '0.16em', marginTop: 0, gap: 7 }}>
+            <span style={{ color: '#F2B233' }}>INITIATE</span>
+            <span className="motto-dot">•</span>
+            <span style={{ color: '#2EA8FF' }}>CONNECT</span>
+            <span className="motto-dot">•</span>
+            <span style={{ color: '#FF6B2C' }}>EVOLVE</span>
+          </div>
+        </div>
+      </div>
     </aside>
   );
 }

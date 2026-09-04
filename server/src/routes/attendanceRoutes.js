@@ -4,8 +4,10 @@ const { startSession, markAttendance, getMyAttendance } = require('../controller
 const { authenticateToken } = require('../middleware/auth');
 const { authorizeRoles } = require('../middleware/rbac');
 
-router.get('/session', authenticateToken, authorizeRoles('ADMIN'), startSession);
-router.post('/mark', authenticateToken, authorizeRoles('ADMIN'), markAttendance);
+// Team heads may run a session for their own department (enforced in the
+// controller); admins may run one for everyone.
+router.get('/session', authenticateToken, authorizeRoles('ADMIN', 'TEAM_HEAD'), startSession);
+router.post('/mark', authenticateToken, authorizeRoles('ADMIN', 'TEAM_HEAD'), markAttendance);
 router.get('/my-records', authenticateToken, getMyAttendance);
 
 module.exports = router;

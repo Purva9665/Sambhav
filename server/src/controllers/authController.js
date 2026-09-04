@@ -1,148 +1,234 @@
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendEmail } = require('../utils/emailService');
 const { logAuditEvent } = require('../utils/auditHelper');
+const { TEAMS, ACADEMIC_DEPARTMENTS, SELF_ASSIGNABLE_ROLES } = require('../constants');
 
-// 1. REGISTER (Admin-Gated OTP Dispatch)
+const TOKEN_TTL = process.env.JWT_EXPIRES_IN || '8h';
+const OTP_TTL_MIN = 15;
+const MAX_OTP_ATTEMPTS = 6;
+
+const signToken = (user) =>
+  jwt.sign(
+    { id: user._id, role: user.role, email: user.email },
+    process.env.JWT_SECRET,
+    { expiresIn: TOKEN_TTL }
+  );
+
+const publicUser = (user) => ({
+  id: user._id,
+  fullName: user.fullName,
+  email: user.email,
+  role: user.role,
+  department: user.department,
+  academicDepartment: user.academicDepartment || '',
+  mobileNumber: user.mobileNumber,
+  position: user.position,
+  status: user.status
+});
+
+/** Cryptographically random 6-digit code (Math.random is not suitable here). */
+const generateOtp = () => String(crypto.randomInt(0, 1_000_000)).padStart(6, '0');
+
+// ---------------------------------------------------------------- REGISTER
+
 const register = async (req, res) => {
   try {
-    const { fullName, email, password, role, department, mobileNumber, position } = req.body;
+    const {
+      fullName, email, password, role, department,
+      academicDepartment, mobileNumber, position
+    } = req.body;
 
     if (!fullName || !email || !password || !department) {
-      return res.status(400).json({ success: false, message: 'Full name, email, password, and department are required.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Full name, email, password and department are required.'
+      });
     }
 
-    const existingUser = await User.findOne({ email: email.toLowerCase() });
-    if (existingUser) {
-      return res.status(400).json({ success: false, message: 'An account with this email already exists.' });
+    if (String(password).length < 8) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters.'
+      });
     }
 
-    const salt = await bcrypt.genSalt(12);
-    const passwordHash = await bcrypt.hash(password, salt);
+    const normalisedEmail = String(email).toLowerCase().trim();
 
-    // Generate 6-digit secure numeric OTP
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 mins expiry
+    if (await User.findOne({ email: normalisedEmail })) {
+      return res.status(400).json({
+        success: false,
+        message: 'An account with this email already exists.'
+      });
+    }
 
-    const requestedRole = ['TEAM_HEAD', 'TEAM_MEMBER'].includes(role) ? role : 'TEAM_MEMBER';
+    const passwordHash = await bcrypt.hash(password, await bcrypt.genSalt(12));
+    const otpCode = generateOtp();
+
+    // A registrant may only ever request a non-privileged role. ADMIN is
+    // granted deliberately from the directory, never by self-registration.
+    const requestedRole = SELF_ASSIGNABLE_ROLES.includes(role) ? role : 'TEAM_MEMBER';
+
+    if (!TEAMS.includes(department)) {
+      return res.status(400).json({ success: false, message: 'Unknown team.' });
+    }
+
+    // Only meaningful for a department head, and must be a known department.
+    const academic =
+      requestedRole === 'DEPARTMENT_HEAD' && ACADEMIC_DEPARTMENTS.includes(academicDepartment)
+        ? academicDepartment
+        : '';
+
+    if (requestedRole === 'DEPARTMENT_HEAD' && !academic) {
+      return res.status(400).json({
+        success: false,
+        message: 'Select which academic department you head.'
+      });
+    }
 
     const newUser = await User.create({
       fullName,
-      email: email.toLowerCase(),
+      email: normalisedEmail,
       passwordHash,
       role: requestedRole,
       department,
+      academicDepartment: academic,
       mobileNumber: mobileNumber || '',
       position: position || 'Member',
       status: 'PENDING_VERIFICATION',
       otpCode,
-      otpExpiresAt
+      otpExpiresAt: new Date(Date.now() + OTP_TTL_MIN * 60 * 1000),
+      otpAttempts: 0
     });
 
-    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
-    const timestamp = new Date().toLocaleString();
-    const adminEmail = process.env.ADMIN_EMAIL || 'purvakadam9637@gmail.com';
+    const adminEmail = (process.env.ADMIN_EMAIL || '').toLowerCase();
+    const ipAddress = req.ip;
 
-    // Print bold clear OTP box in terminal for local testing
-    console.log(`\n======================================================`);
-    console.log(`[SAMBHAV ADMIN OTP DISPATCH]`);
-    console.log(`To Admin Email: ${adminEmail}`);
-    console.log(`Applicant Name: ${fullName} (${email})`);
-    console.log(`Requested Role: ${requestedRole} | Dept: ${department}`);
-    console.log(`------------------------------------------------------`);
-    console.log(`>>> VERIFICATION OTP CODE: [ ${otpCode} ] <<<`);
-    console.log(`======================================================\n`);
-
-    // Send email to ADMIN with applicant details & OTP
-    const adminEmailHtml = `
-      <div style="font-family: Arial, sans-serif; background: #0A0D14; color: #ffffff; padding: 24px; border-radius: 12px; border: 1px solid #00A3FF;">
-        <h2 style="color: #00A3FF; margin-top: 0;">🛡️ SAMBHAV Security Alert: New Registration OTP Request</h2>
-        <p>A new user has submitted a registration request on the SAMBHAV Employee Portal.</p>
-        
-        <div style="background: rgba(255,255,255,0.08); padding: 16px; border-radius: 8px; margin: 16px 0;">
-          <p><strong>Applicant Name:</strong> ${fullName}</p>
-          <p><strong>Applicant Email:</strong> ${email}</p>
-          <p><strong>Requested Role:</strong> ${requestedRole}</p>
-          <p><strong>Department:</strong> ${department}</p>
-          <p><strong>Request IP:</strong> ${ipAddress}</p>
-          <p><strong>Timestamp:</strong> ${timestamp}</p>
-          <p><strong>User Agent:</strong> ${userAgent}</p>
+    const html = `
+      <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;border:1px solid #E2E5EA">
+        <div style="background:#0E1524;padding:20px 24px">
+          <div style="color:#fff;font-size:18px;font-weight:700;letter-spacing:2px">SAMBHAV</div>
+          <div style="color:#8A929F;font-size:11px;letter-spacing:3px;margin-top:2px">PORTAL</div>
         </div>
-
-        <div style="background: linear-gradient(135deg, #00A3FF, #E5A93C); color: #000; padding: 18px; border-radius: 10px; text-align: center; margin: 20px 0;">
-          <span style="font-size: 14px; font-weight: bold; letter-spacing: 1px; display: block;">VERIFICATION OTP CODE</span>
-          <span style="font-size: 32px; font-weight: 800; letter-spacing: 6px;">${otpCode}</span>
+        <div style="padding:24px">
+          <h2 style="margin:0 0 12px;font-size:18px;color:#14181F">New registration request</h2>
+          <p style="color:#59616E;font-size:14px;line-height:1.6;margin:0 0 18px">
+            Someone requested access to the SAMBHAV portal. Share the code below with them
+            only after you have confirmed who they are.
+          </p>
+          <table style="width:100%;border-collapse:collapse;font-size:13px;color:#14181F">
+            <tr><td style="padding:5px 0;color:#8A929F">Name</td><td style="padding:5px 0"><strong>${fullName}</strong></td></tr>
+            <tr><td style="padding:5px 0;color:#8A929F">Email</td><td style="padding:5px 0">${normalisedEmail}</td></tr>
+            <tr><td style="padding:5px 0;color:#8A929F">Role</td><td style="padding:5px 0">${requestedRole}</td></tr>
+            <tr><td style="padding:5px 0;color:#8A929F">Department</td><td style="padding:5px 0">${department}</td></tr>
+            <tr><td style="padding:5px 0;color:#8A929F">IP</td><td style="padding:5px 0">${ipAddress}</td></tr>
+            <tr><td style="padding:5px 0;color:#8A929F">Time</td><td style="padding:5px 0">${new Date().toISOString()}</td></tr>
+          </table>
+          <div style="background:#0E1524;padding:20px;text-align:center;margin:22px 0">
+            <div style="color:#8A929F;font-size:11px;letter-spacing:2px;margin-bottom:6px">VERIFICATION CODE</div>
+            <div style="color:#2EA8FF;font-size:32px;font-weight:800;letter-spacing:10px">${otpCode}</div>
+          </div>
+          <p style="color:#8A929F;font-size:12px;margin:0">
+            This code expires in ${OTP_TTL_MIN} minutes. If you did not expect this request, ignore this email
+            and the account will stay inactive.
+          </p>
         </div>
-
-        <p style="color: #94A3B8; font-size: 13px;">Provide this OTP to the applicant after verifying their identity to complete account activation.</p>
       </div>
     `;
 
-    await sendEmail({
-      to: adminEmail,
-      subject: `[SAMBHAV ADMIN OTP] Registration Request from ${fullName} (${email})`,
-      htmlText: adminEmailHtml
-    });
+    const delivery = adminEmail
+      ? await sendEmail({
+          to: adminEmail,
+          subject: `[SAMBHAV] Access request from ${fullName}`,
+          htmlText: html
+        })
+      : { delivered: false, mode: 'LOGGED', error: 'ADMIN_EMAIL is not set' };
 
-    // Audit log
     await logAuditEvent({
       action: 'REGISTER_REQUEST',
       req,
       actorUser: newUser,
       targetResource: `User:${newUser._id}`,
-      details: { fullName, email, requestedRole, department, otpDispatchedTo: adminEmail }
+      details: {
+        fullName,
+        email: normalisedEmail,
+        requestedRole,
+        department,
+        otpDelivered: delivery.delivered
+      }
     });
 
+    // Report delivery honestly. The code itself is never returned — the old
+    // `devOtp` field let anyone self-activate straight from the response body.
     return res.status(201).json({
       success: true,
-      message: `Registration submitted! An Admin Verification OTP has been dispatched to the Admin email (${adminEmail}). Please obtain the OTP from the Admin to activate your account.`,
-      email: newUser.email,
-      devOtp: otpCode // Included for local dev testing ease
+      emailDelivered: delivery.delivered,
+      message: delivery.delivered
+        ? 'Request submitted. Your administrator has been sent a verification code — ask them for it to activate your account.'
+        : 'Request submitted, but the verification email could not be delivered. Please contact your administrator directly to obtain your code.'
     });
   } catch (err) {
-    console.error(`[REGISTER ERROR]`, err);
+    console.error('[REGISTER ERROR]', err);
     return res.status(500).json({ success: false, message: 'Server error during registration.' });
   }
 };
 
-// 2. VERIFY OTP
+// -------------------------------------------------------------- VERIFY OTP
+
 const verifyOtp = async (req, res) => {
   try {
     const { email, otpCode } = req.body;
 
     if (!email || !otpCode) {
-      return res.status(400).json({ success: false, message: 'Email and OTP code are required.' });
+      return res.status(400).json({ success: false, message: 'Email and code are required.' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
 
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User record not found.' });
+    // Same response whether or not the account exists, so this cannot be used
+    // to enumerate registered emails.
+    const generic = { success: false, message: 'Invalid or expired code.' };
+
+    if (!user || user.status === 'ACTIVE' || !user.otpCode) {
+      return res.status(400).json(generic);
     }
 
-    if (user.status === 'ACTIVE') {
-      return res.status(400).json({ success: false, message: 'Account is already verified and active.' });
+    if (user.otpAttempts >= MAX_OTP_ATTEMPTS) {
+      return res.status(429).json({
+        success: false,
+        message: 'Too many incorrect attempts. Ask your administrator to reissue a code.'
+      });
     }
 
-    if (user.otpCode !== otpCode.trim()) {
+    if (user.otpExpiresAt && Date.now() > user.otpExpiresAt.getTime()) {
+      return res.status(400).json(generic);
+    }
+
+    // Constant-time compare so the code cannot be guessed by timing
+    const supplied = Buffer.from(String(otpCode).trim());
+    const expected = Buffer.from(user.otpCode);
+    const valid = supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+
+    if (!valid) {
+      user.otpAttempts = (user.otpAttempts || 0) + 1;
+      await user.save();
+
       await logAuditEvent({
         action: 'LOGIN_FAILED',
         req,
         actorUser: user,
-        details: { reason: 'INVALID_REGISTRATION_OTP', submittedOtp: otpCode }
+        details: { reason: 'INVALID_REGISTRATION_OTP', attempt: user.otpAttempts }
       });
-      return res.status(400).json({ success: false, message: 'Invalid OTP code provided.' });
-    }
 
-    if (user.otpExpiresAt && new Date() > user.otpExpiresAt) {
-      return res.status(400).json({ success: false, message: 'OTP code has expired. Please request a new registration.' });
+      return res.status(400).json(generic);
     }
 
     user.status = 'ACTIVE';
     user.otpCode = null;
     user.otpExpiresAt = null;
+    user.otpAttempts = 0;
     await user.save();
 
     await logAuditEvent({
@@ -153,32 +239,20 @@ const verifyOtp = async (req, res) => {
       details: { statusUpdatedTo: 'ACTIVE' }
     });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
-      process.env.JWT_SECRET || 'sambhav_jwt_secret_key',
-      { expiresIn: '2h' }
-    );
-
     return res.status(200).json({
       success: true,
-      message: 'Account verified and activated successfully!',
-      token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        status: user.status
-      }
+      message: 'Account activated.',
+      token: signToken(user),
+      user: publicUser(user)
     });
   } catch (err) {
-    console.error(`[VERIFY OTP ERROR]`, err);
-    return res.status(500).json({ success: false, message: 'Server error during OTP verification.' });
+    console.error('[VERIFY OTP ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Server error during verification.' });
   }
 };
 
-// 3. LOGIN
+// ------------------------------------------------------------------- LOGIN
+
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -187,85 +261,56 @@ const login = async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email and password are required.' });
     }
 
-    const user = await User.findOne({ email: email.toLowerCase() });
+    const user = await User.findOne({ email: String(email).toLowerCase().trim() });
 
     if (!user) {
-      await logAuditEvent({
-        action: 'LOGIN_FAILED',
-        req,
-        actorUser: null,
-        details: { email, reason: 'USER_NOT_FOUND' }
-      });
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+      // Hash anyway so a missing account is not detectably faster than a wrong password
+      await bcrypt.compare(password, '$2a$12$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalid');
+      await logAuditEvent({ action: 'LOGIN_FAILED', req, actorUser: null, details: { email, reason: 'USER_NOT_FOUND' } });
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
-    const isMatch = await bcrypt.compare(password, user.passwordHash);
-
-    if (!isMatch) {
-      await logAuditEvent({
-        action: 'LOGIN_FAILED',
-        req,
-        actorUser: user,
-        details: { email, reason: 'INVALID_PASSWORD' }
-      });
-      return res.status(401).json({ success: false, message: 'Invalid credentials.' });
+    if (!(await bcrypt.compare(password, user.passwordHash))) {
+      await logAuditEvent({ action: 'LOGIN_FAILED', req, actorUser: user, details: { reason: 'INVALID_PASSWORD' } });
+      return res.status(401).json({ success: false, message: 'Invalid email or password.' });
     }
 
     if (user.status !== 'ACTIVE') {
       return res.status(403).json({
         success: false,
-        message: `Account is ${user.status}. Please complete Admin OTP verification.`
+        message: user.status === 'PENDING_VERIFICATION'
+          ? 'Your account is awaiting verification. Ask your administrator for your code.'
+          : 'This account is suspended. Contact your administrator.'
       });
     }
 
-    const ipAddress = req.headers['x-forwarded-for'] || req.socket.remoteAddress || '127.0.0.1';
-    const userAgent = req.headers['user-agent'] || 'Unknown Browser';
-
     user.lastLoginAt = new Date();
-    user.lastLoginIp = ipAddress;
-    user.lastLoginUserAgent = userAgent;
+    user.lastLoginIp = req.ip;
+    user.lastLoginUserAgent = req.headers['user-agent'] || '';
     await user.save();
 
     await logAuditEvent({
       action: 'LOGIN_SUCCESS',
       req,
       actorUser: user,
-      details: { fullName: user.fullName, email: user.email, role: user.role }
+      details: { role: user.role }
     });
-
-    const token = jwt.sign(
-      { id: user._id, role: user.role, email: user.email },
-      process.env.JWT_SECRET || 'sambhav_jwt_secret_key',
-      { expiresIn: '2h' }
-    );
 
     return res.status(200).json({
       success: true,
-      message: 'Login successful',
-      token,
-      user: {
-        id: user._id,
-        fullName: user.fullName,
-        email: user.email,
-        role: user.role,
-        department: user.department,
-        mobileNumber: user.mobileNumber,
-        position: user.position,
-        status: user.status
-      }
+      message: 'Signed in.',
+      token: signToken(user),
+      user: publicUser(user)
     });
   } catch (err) {
-    console.error(`[LOGIN ERROR]`, err);
-    return res.status(500).json({ success: false, message: 'Server error during login.' });
+    console.error('[LOGIN ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Server error during sign in.' });
   }
 };
 
-// 4. GET CURRENT USER (ME)
-const getMe = async (req, res) => {
-  return res.status(200).json({
-    success: true,
-    user: req.user
-  });
-};
+// --------------------------------------------------------------------- ME
+
+const getMe = async (req, res) =>
+  res.status(200).json({ success: true, user: publicUser(req.user) });
 
 module.exports = { register, verifyOtp, login, getMe };

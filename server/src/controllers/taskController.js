@@ -8,12 +8,14 @@ const getTasks = async (req, res) => {
   try {
     let query = {};
 
-    if (req.user.role === 'TEAM_MEMBER') {
-      query.assignedToUserId = req.user._id;
-    } else if (req.user.role === 'TEAM_HEAD') {
+    // Only ADMIN sees everything. Anything not explicitly widened here is
+    // narrowed to the caller's own tasks — a new role must never inherit
+    // organisation-wide visibility by falling through.
+    if (req.user.role === 'TEAM_HEAD') {
       query.team = req.user.department;
+    } else if (req.user.role !== 'ADMIN') {
+      query.assignedToUserId = req.user._id;
     }
-    // Admin gets all tasks or filtered by team
 
     const tasks = await Task.find(query)
       .populate('projectId', 'projectName')

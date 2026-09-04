@@ -1,237 +1,210 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosClient from '../api/axiosClient';
-import { Megaphone, Send, Mail, Monitor, Users } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
+import { Card, Badge, Empty, Loading, Field, PageHead, Alert } from '../components/ui';
+import { DEPARTMENTS, matches } from '../constants';
+import { Megaphone, Send, Mail, Monitor } from 'lucide-react';
 
-export default function AnnouncementsPage() {
+const blank = () => ({
+  title: '',
+  content: '',
+  channels: ['BANNER'],
+  audienceType: 'ALL',
+  audienceTargets: []
+});
+
+export default function AnnouncementsPage({ query }) {
   const { user } = useAuth();
-  const [announcements, setAnnouncements] = useState([]);
+  const toast = useToast();
+
+  const [items, setItems] = useState([]);
   const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
-  
-  const [newAnn, setNewAnn] = useState({
-    title: '',
-    content: '',
-    channels: ['BANNER'],
-    audienceType: 'ALL',
-    audienceTargets: []
-  });
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(blank);
 
-  const fetchAnnouncements = async () => {
-    try {
-      const [aRes, mRes] = await Promise.allSettled([
-        axiosClient.get('/announcements'),
-        axiosClient.get('/admin/members')
-      ]);
+  const isAdmin = user.role === 'ADMIN';
 
-      if (aRes.status === 'fulfilled' && aRes.value.success) setAnnouncements(aRes.value.announcements);
-      if (mRes.status === 'fulfilled' && mRes.value.success) setMembers(mRes.value.members);
-    } catch (err) {
-      console.error('Failed to load announcements:', err);
-    } finally {
-      setLoading(false);
-    }
-  };
+  const load = useCallback(async () => {
+    const [a, m] = await Promise.allSettled([
+      axiosClient.get('/announcements'),
+      isAdmin ? axiosClient.get('/admin/members') : Promise.resolve(null)
+    ]);
+    const ok = (r) => (r.status === 'fulfilled' && r.value?.success ? r.value : null);
+    setItems(ok(a)?.announcements ?? []);
+    setMembers(ok(m)?.members ?? []);
+    setLoading(false);
+  }, [isAdmin]);
 
-  useEffect(() => {
-    fetchAnnouncements();
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const handleChannelToggle = (channel) => {
-    setNewAnn(prev => {
-      const exists = prev.channels.includes(channel);
-      const updated = exists ? prev.channels.filter(c => c !== channel) : [...prev.channels, channel];
-      return { ...prev, channels: updated.length > 0 ? updated : ['BANNER'] };
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const toggleChannel = (channel) =>
+    setForm(f => {
+      const next = f.channels.includes(channel)
+        ? f.channels.filter(c => c !== channel)
+        : [...f.channels, channel];
+      return { ...f, channels: next.length ? next : ['BANNER'] };
     });
-  };
 
-  const handleSubmit = async (e) => {
+  const toggleTarget = (value) =>
+    setForm(f => ({
+      ...f,
+      audienceTargets: f.audienceTargets.includes(value)
+        ? f.audienceTargets.filter(t => t !== value)
+        : [...f.audienceTargets, value]
+    }));
+
+  const needsTargets = form.audienceType === 'DEPARTMENT' || form.audienceType === 'INDIVIDUALS';
+
+  const submit = async (e) => {
     e.preventDefault();
+    if (needsTargets && form.audienceTargets.length === 0) {
+      toast.error('Select at least one recipient for this audience.');
+      return;
+    }
+    setSaving(true);
     try {
-      const res = await axiosClient.post('/announcements', newAnn);
+      const res = await axiosClient.post('/announcements', form);
       if (res.success) {
-        alert('Announcement dispatched successfully!');
-        setNewAnn({ title: '', content: '', channels: ['BANNER'], audienceType: 'ALL', audienceTargets: [] });
-        fetchAnnouncements();
+        toast.success(
+          form.channels.includes('EMAIL')
+            ? 'Announcement published and emails queued.'
+            : 'Announcement published.'
+        );
+        setForm(blank());
+        load();
       }
     } catch (err) {
-      alert(err.message || 'Failed to dispatch announcement.');
+      toast.error(err.message || 'Could not publish the announcement.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const departments = [
-    'PR TEAM',
-    'CSD',
-    'TECHNICAL',
-    'EVENT',
-    'GRAPHICS',
-    'DOCUMENTATION',
-    'Video',
-    'Membership Director'
-  ];
+  const visible = items.filter(a => matches(query, a.title, a.content, a.createdByName, a.audienceType));
 
   return (
-    <div>
-      <div style={{ marginBottom: '24px' }}>
-        <h2 style={{ fontSize: '26px', color: '#FFFFFF' }}>Announcements Center</h2>
-        <p style={{ color: '#94A3B8', fontSize: '13px' }}>
-          Broadcast organization announcements via Dashboard Banner and SendGrid Email.
-        </p>
-      </div>
+    <>
+      <PageHead
+        title="Announcements"
+        subtitle={isAdmin ? 'Broadcast to the organisation by banner and email.' : 'Announcements addressed to you.'}
+      />
 
-      {/* Admin Broadcast Composer */}
-      {user?.role === 'ADMIN' && (
-        <div className="glass-card" style={{ marginBottom: '32px' }}>
-          <h3 style={{ color: '#FFFFFF', fontSize: '18px', marginBottom: '18px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Megaphone color="#00A3FF" size={20} /> Compose & Dispatch Announcement
-          </h3>
+      {isAdmin && (
+        <Card title="Compose" className="mb-16">
+          <form onSubmit={submit}>
+            <Field label="Title">
+              <input className="input" value={form.title} onChange={set('title')}
+                placeholder="e.g. All-hands meeting on Friday" required />
+            </Field>
 
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label className="form-label">Announcement Title</label>
-              <input 
-                type="text" 
-                className="form-input" 
-                placeholder="e.g. Mandatory Cybersecurity Briefing Tomorrow"
-                value={newAnn.title} 
-                onChange={e => setNewAnn({...newAnn, title: e.target.value})} 
-                required 
-              />
-            </div>
+            <Field label="Message">
+              <textarea className="textarea" value={form.content} onChange={set('content')}
+                placeholder="Write the announcement…" required />
+            </Field>
 
-            <div className="form-group">
-              <label className="form-label">Content / Message</label>
-              <textarea 
-                className="form-textarea" 
-                rows={4} 
-                placeholder="Write announcement details..."
-                value={newAnn.content} 
-                onChange={e => setNewAnn({...newAnn, content: e.target.value})} 
-                required 
-              />
-            </div>
-
-            {/* Channels & Audience Pickers */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginBottom: '20px' }}>
-              <div>
-                <label className="form-label">Delivery Channels</label>
-                <div style={{ display: 'flex', gap: '12px' }}>
-                  <button
-                    type="button"
-                    onClick={() => handleChannelToggle('BANNER')}
-                    className={`btn ${newAnn.channels.includes('BANNER') ? 'btn-primary' : 'btn-outline'}`}
-                    style={{ fontSize: '13px' }}
-                  >
-                    <Monitor size={16} /> Top Banner
+            <div className="field-row">
+              <Field label="Delivery channels">
+                <div className="row row-wrap">
+                  <button type="button" onClick={() => toggleChannel('BANNER')}
+                    className={`btn btn-sm ${form.channels.includes('BANNER') ? 'btn-primary' : 'btn-secondary'}`}>
+                    <Monitor size={14} /> Banner
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => handleChannelToggle('EMAIL')}
-                    className={`btn ${newAnn.channels.includes('EMAIL') ? 'btn-secondary' : 'btn-outline'}`}
-                    style={{ fontSize: '13px' }}
-                  >
-                    <Mail size={16} /> SendGrid Email
+                  <button type="button" onClick={() => toggleChannel('EMAIL')}
+                    className={`btn btn-sm ${form.channels.includes('EMAIL') ? 'btn-gold' : 'btn-secondary'}`}>
+                    <Mail size={14} /> Email
                   </button>
                 </div>
-              </div>
+              </Field>
 
-              <div>
-                <label className="form-label">Audience Scope</label>
-                <select 
-                  className="form-select"
-                  value={newAnn.audienceType}
-                  onChange={e => setNewAnn({...newAnn, audienceType: e.target.value, audienceTargets: []})}
-                >
-                  <option value="ALL">All Members & Heads</option>
-                  <option value="DEPARTMENT">Particular Department(s)</option>
-                  <option value="HEADS">All Team Heads Only</option>
-                  <option value="INDIVIDUALS">Particular Individuals</option>
+              <Field label="Audience">
+                <select className="select" value={form.audienceType}
+                  onChange={(e) => setForm(f => ({ ...f, audienceType: e.target.value, audienceTargets: [] }))}>
+                  <option value="ALL">Everyone</option>
+                  <option value="DEPARTMENT">Specific departments</option>
+                  <option value="HEADS">Team heads only</option>
+                  <option value="INDIVIDUALS">Specific people</option>
                 </select>
-              </div>
+              </Field>
             </div>
 
-            {/* Dynamic Audience Selection List */}
-            {newAnn.audienceType === 'DEPARTMENT' && (
-              <div className="form-group" style={{ background: 'rgba(255,255,255,0.04)', padding: '14px', borderRadius: '8px' }}>
-                <label className="form-label">Select Target Departments</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px' }}>
-                  {departments.map(dept => (
-                    <label key={dept} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox"
-                        checked={newAnn.audienceTargets.includes(dept)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setNewAnn(prev => ({
-                            ...prev,
-                            audienceTargets: checked ? [...prev.audienceTargets, dept] : prev.audienceTargets.filter(d => d !== dept)
-                          }));
-                        }}
-                      />
-                      {dept}
+            {form.audienceType === 'DEPARTMENT' && (
+              <Field label="Departments">
+                <div className="row row-wrap">
+                  {DEPARTMENTS.map(d => (
+                    <label key={d} className="checkline">
+                      <input type="checkbox" checked={form.audienceTargets.includes(d)}
+                        onChange={() => toggleTarget(d)} />
+                      {d}
                     </label>
                   ))}
                 </div>
-              </div>
+              </Field>
             )}
 
-            {newAnn.audienceType === 'INDIVIDUALS' && (
-              <div className="form-group" style={{ background: 'rgba(255,255,255,0.04)', padding: '14px', borderRadius: '8px' }}>
-                <label className="form-label">Select Target Members</label>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '10px', maxHeight: '150px', overflowY: 'auto' }}>
-                  {members.map(m => (
-                    <label key={m._id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '13px', cursor: 'pointer' }}>
-                      <input 
-                        type="checkbox"
-                        checked={newAnn.audienceTargets.includes(m._id)}
-                        onChange={(e) => {
-                          const checked = e.target.checked;
-                          setNewAnn(prev => ({
-                            ...prev,
-                            audienceTargets: checked ? [...prev.audienceTargets, m._id] : prev.audienceTargets.filter(id => id !== m._id)
-                          }));
-                        }}
-                      />
-                      {m.fullName} ({m.department})
-                    </label>
-                  ))}
+            {form.audienceType === 'INDIVIDUALS' && (
+              <Field label="People">
+                <div className="row row-wrap" style={{ maxHeight: 160, overflowY: 'auto' }}>
+                  {members.length === 0
+                    ? <span className="t-dim">No members available.</span>
+                    : members.map(m => (
+                        <label key={m._id} className="checkline">
+                          <input type="checkbox" checked={form.audienceTargets.includes(m._id)}
+                            onChange={() => toggleTarget(m._id)} />
+                          {m.fullName} <span className="t-dim">({m.department})</span>
+                        </label>
+                      ))}
                 </div>
-              </div>
+              </Field>
             )}
 
-            <button type="submit" className="btn btn-primary" style={{ padding: '12px 24px' }}>
-              <Send size={16} /> Dispatch Announcement
+            {form.channels.includes('EMAIL') && (
+              <Alert tone="warn">
+                Email delivery requires a verified SendGrid sender. Check the announcement
+                appears in the banner feed below to confirm it was published.
+              </Alert>
+            )}
+
+            <button className="btn btn-primary" type="submit" disabled={saving}>
+              <Send size={15} /> {saving ? 'Publishing…' : 'Publish announcement'}
             </button>
           </form>
-        </div>
+        </Card>
       )}
 
-      {/* Announcements List */}
-      <div className="glass-card">
-        <h3 style={{ color: '#FFFFFF', fontSize: '18px', marginBottom: '16px' }}>Active Broadcast Feed</h3>
-        {announcements.length === 0 ? (
-          <p style={{ color: '#94A3B8' }}>No announcements posted.</p>
+      <Card flush title="Feed">
+        {loading ? (
+          <Loading label="Loading announcements…" />
+        ) : visible.length === 0 ? (
+          <Empty icon={Megaphone} title={query ? 'No matches' : 'No announcements'}
+            text={query ? `Nothing matching "${query}".` : 'Published announcements appear here.'} />
         ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-            {announcements.map(a => (
-              <div key={a._id} style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--border-subtle)', borderRadius: '10px', padding: '16px' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                  <h4 style={{ color: '#00A3FF', fontSize: '16px' }}>{a.title}</h4>
-                  <div style={{ display: 'flex', gap: '6px' }}>
-                    {a.channels.map(c => (
-                      <span key={c} className="badge badge-gold">{c}</span>
-                    ))}
-                  </div>
+          <div className="list">
+            {visible.map(a => (
+              <div className="list-row" key={a._id} style={{ alignItems: 'flex-start' }}>
+                <div className="list-mark" style={{ background: 'var(--brand-cyan-soft)', color: 'var(--brand-cyan-dark)' }}>
+                  <Megaphone size={15} />
                 </div>
-                <p style={{ color: '#FFFFFF', fontSize: '14px', marginBottom: '10px' }}>{a.content}</p>
-                <div style={{ fontSize: '11px', color: '#64748B' }}>
-                  By {a.createdByName} • Audience: {a.audienceType} • Date: {new Date(a.createdAt).toLocaleString()}
+                <div className="list-body">
+                  <div className="row-between" style={{ alignItems: 'flex-start' }}>
+                    <div className="list-title" style={{ whiteSpace: 'normal' }}>{a.title}</div>
+                    <div className="row" style={{ gap: 5 }}>
+                      {a.channels.map(c => <Badge key={c} tone="gold">{c}</Badge>)}
+                    </div>
+                  </div>
+                  <p style={{ fontSize: 13.5, margin: '4px 0 6px' }}>{a.content}</p>
+                  <div className="list-meta">
+                    {a.createdByName} · {a.audienceType} · {new Date(a.createdAt).toLocaleString()}
+                  </div>
                 </div>
               </div>
             ))}
           </div>
         )}
-      </div>
-    </div>
+      </Card>
+    </>
   );
 }

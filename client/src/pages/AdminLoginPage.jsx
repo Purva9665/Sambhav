@@ -3,9 +3,18 @@ import axiosClient from '../api/axiosClient';
 import { useAuth } from '../context/AuthContext';
 import AuthShell from '../components/AuthShell';
 import { Alert, Field, Spinner } from '../components/ui';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, ShieldAlert, ArrowLeft } from 'lucide-react';
 
-export default function LoginPage({ onNavigate }) {
+/**
+ * Separate entrance for administrators, reached at /admin.
+ *
+ * This is a distinct screen, not a distinct level of security: it posts to the
+ * same /auth/login endpoint, and the same server-side RBAC applies either way.
+ * The only difference is that a non-admin who signs in here is told to use the
+ * normal entrance. Nothing here can be bypassed to gain privilege, because the
+ * role comes from the database, never from which form was used.
+ */
+export default function AdminLoginPage({ onNavigate }) {
   const [form, setForm] = useState({ email: '', password: '' });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -20,7 +29,14 @@ export default function LoginPage({ onNavigate }) {
     setError('');
     try {
       const res = await axiosClient.post('/auth/login', form);
-      if (res.success) loginUser(res.user, res.token);
+      if (res.success) {
+        if (res.user.role !== 'ADMIN') {
+          setError('This entrance is for administrators. Please use the main sign-in page.');
+          setLoading(false);
+          return;
+        }
+        loginUser(res.user, res.token);
+      }
     } catch (err) {
       setError(err.message || 'Sign in failed. Check your email and password.');
     } finally {
@@ -30,20 +46,29 @@ export default function LoginPage({ onNavigate }) {
 
   return (
     <AuthShell
-      title="Welcome to SAMBHAV"
-      subtitle="Sign in to your team workspace"
+      title="Administrator sign-in"
+      subtitle="Restricted entrance for portal administrators"
+      showMotto={false}
     >
+      <div className="auth-badge" style={{
+        background: 'rgba(255, 107, 44, 0.12)',
+        borderColor: 'rgba(255, 107, 44, 0.4)',
+        color: 'var(--brand-orange)'
+      }}>
+        <ShieldAlert size={24} />
+      </div>
+
       {expiredNotice && <Alert tone="warn">{expiredNotice}</Alert>}
       {error && <Alert tone="err">{error}</Alert>}
 
       <form onSubmit={submit}>
-        <Field label="Email">
+        <Field label="Administrator email">
           <input
             className="input"
             type="email"
             value={form.email}
             onChange={set('email')}
-            placeholder="you@sambhav.org"
+            placeholder="admin@sambhav.org"
             autoComplete="email"
             autoFocus
             required
@@ -77,7 +102,7 @@ export default function LoginPage({ onNavigate }) {
         </Field>
 
         <button className="btn btn-cta" type="submit" disabled={loading} style={{ marginTop: 8 }}>
-          {loading ? <><Spinner /> Signing in…</> : 'Sign In'}
+          {loading ? <><Spinner /> Signing in…</> : 'Sign in as administrator'}
         </button>
       </form>
 
@@ -87,12 +112,11 @@ export default function LoginPage({ onNavigate }) {
         </button>
       </p>
 
-      <p className="auth-foot" style={{ marginTop: 8 }}>
-        Don't have an account?{' '}
-        <button className="auth-link" onClick={() => onNavigate('register')}>
-          Request access
-        </button>
-      </p>
+      <div className="auth-or">OR</div>
+
+      <button className="btn btn-secondary" onClick={() => onNavigate('login')}>
+        <ArrowLeft size={16} /> Standard sign-in
+      </button>
     </AuthShell>
   );
 }

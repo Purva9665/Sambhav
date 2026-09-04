@@ -1,193 +1,201 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosClient from '../api/axiosClient';
-import { FolderKanban, Plus, Search, CheckCircle, Clock } from 'lucide-react';
+import { useToast } from '../components/ui/Toast';
+import { Card, Badge, Empty, Loading, Modal, Field, PageHead, toneFor } from '../components/ui';
+import { DEPARTMENTS, PROJECT_STATUSES, localDate, dateFromNow, matches } from '../constants';
+import { FolderKanban, Plus, CalendarClock } from 'lucide-react';
 
-export default function ProjectsPage() {
+const blank = () => ({
+  projectName: '',
+  assignedTeam: DEPARTMENTS[0],
+  description: '',
+  deadline: dateFromNow(14)
+});
+
+export default function ProjectsPage({ query }) {
   const { user } = useAuth();
+  const toast = useToast();
+
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showModal, setShowModal] = useState(false);
-  const [newProject, setNewProject] = useState({
-    projectName: '',
-    assignedTeam: 'PR TEAM',
-    description: '',
-    deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  });
+  const [open, setOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState(blank);
 
-  const fetchProjects = async () => {
+  const isAdmin = user.role === 'ADMIN';
+
+  const load = useCallback(async () => {
     try {
       const res = await axiosClient.get('/projects');
       if (res.success) setProjects(res.projects);
     } catch (err) {
-      console.error('Failed to fetch projects:', err);
+      toast.error(err.message || 'Could not load projects.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [toast]);
 
-  useEffect(() => {
-    fetchProjects();
-  }, []);
+  useEffect(() => { load(); }, [load]);
 
-  const setQuickDeadline = (daysFromNow) => {
-    const target = new Date();
-    target.setDate(target.getDate() + daysFromNow);
-    setNewProject({ ...newProject, deadline: target.toISOString().split('T')[0] });
-  };
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const handleCreateProject = async (e) => {
+  const create = async (e) => {
     e.preventDefault();
+    setSaving(true);
     try {
-      const res = await axiosClient.post('/projects', newProject);
+      const res = await axiosClient.post('/projects', form);
       if (res.success) {
-        setShowModal(false);
-        setNewProject({ 
-          projectName: '', 
-          assignedTeam: 'PR TEAM', 
-          description: '', 
-          deadline: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0] 
-        });
-        fetchProjects();
+        toast.success(`Project “${form.projectName}” created.`);
+        setOpen(false);
+        setForm(blank());
+        load();
       }
     } catch (err) {
-      alert(err.message || 'Failed to create project.');
+      toast.error(err.message || 'Could not create the project.');
+    } finally {
+      setSaving(false);
     }
   };
 
-  return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px' }}>
-        <div>
-          <h2 style={{ fontSize: '26px', color: '#FFFFFF' }}>Projects Directory</h2>
-          <p style={{ color: '#94A3B8', fontSize: '13px' }}>Monitor organization initiative milestones and team progress.</p>
-        </div>
+  const changeStatus = async (id, status) => {
+    try {
+      const res = await axiosClient.put(`/projects/${id}`, { status });
+      if (res.success) {
+        toast.success('Project updated.');
+        load();
+      }
+    } catch (err) {
+      toast.error(err.message || 'Could not update the project.');
+    }
+  };
 
-        {user?.role === 'ADMIN' && (
-          <button onClick={() => setShowModal(true)} className="btn btn-primary">
-            <Plus size={18} /> Create New Project
-          </button>
-        )}
-      </div>
+  const visible = projects.filter(p =>
+    matches(query, p.projectName, p.description, p.assignedTeam, p.status)
+  );
+
+  return (
+    <>
+      <PageHead
+        title="Projects"
+        subtitle="Track initiatives, owners and delivery progress across teams."
+        actions={
+          isAdmin && (
+            <button className="btn btn-primary" onClick={() => setOpen(true)}>
+              <Plus size={16} /> New project
+            </button>
+          )
+        }
+      />
 
       {loading ? (
-        <p style={{ color: '#94A3B8' }}>Loading projects...</p>
-      ) : projects.length === 0 ? (
-        <div className="glass-card" style={{ textAlign: 'center', padding: '40px' }}>
-          <FolderKanban size={48} color="#94A3B8" style={{ marginBottom: '12px' }} />
-          <p style={{ color: '#94A3B8' }}>No active projects found.</p>
-        </div>
+        <Loading label="Loading projects…" />
+      ) : visible.length === 0 ? (
+        <Card>
+          <Empty
+            icon={FolderKanban}
+            title={query ? 'No matching projects' : 'No projects yet'}
+            text={
+              query
+                ? `Nothing matching "${query}".`
+                : isAdmin
+                  ? 'Create your first project to get started.'
+                  : 'Projects assigned to your team will appear here.'
+            }
+          />
+        </Card>
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: '20px' }}>
-          {projects.map(p => (
-            <div key={p._id} className="glass-card" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                  <span className="badge badge-cyan">{p.assignedTeam}</span>
-                  <span className={`badge ${p.status === 'COMPLETED' ? 'badge-green' : p.status === 'IN_PROGRESS' ? 'badge-gold' : 'badge-orange'}`}>
-                    {p.status}
+        <div className="grid grid-auto">
+          {visible.map(p => {
+            const overdue = p.status !== 'COMPLETED' && new Date(p.deadline) < new Date(localDate() + 'T00:00:00');
+            return (
+              <Card key={p._id}>
+                <div className="row-between" style={{ marginBottom: 12 }}>
+                  <Badge tone="cyan">{p.assignedTeam}</Badge>
+                  <Badge tone={toneFor(p.status)}>{p.status.replace('_', ' ')}</Badge>
+                </div>
+
+                <h3 className="card-title" style={{ marginBottom: 6 }}>{p.projectName}</h3>
+                <p className="t-mute" style={{ fontSize: 13, marginBottom: 16 }}>{p.description}</p>
+
+                <div className="row-between" style={{ fontSize: 12, marginBottom: 6 }}>
+                  <span className="t-dim">Progress</span>
+                  <strong style={{ color: 'var(--brand-cyan-dark)' }}>{p.progress || 0}%</strong>
+                </div>
+                <div className="meter" style={{ marginBottom: 14 }}>
+                  <div className="meter-fill" style={{ width: `${p.progress || 0}%` }} />
+                </div>
+
+                <div className="row-between">
+                  <span className="t-dim" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <CalendarClock size={13} />
+                    {new Date(p.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
                   </span>
-                </div>
-                <h3 style={{ color: '#FFFFFF', fontSize: '18px', marginBottom: '8px' }}>{p.projectName}</h3>
-                <p style={{ color: '#94A3B8', fontSize: '13px', marginBottom: '18px' }}>{p.description}</p>
-              </div>
-
-              <div>
-                {/* Progress bar */}
-                <div style={{ marginBottom: '12px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', color: '#94A3B8', marginBottom: '4px' }}>
-                    <span>Completion Progress</span>
-                    <strong style={{ color: '#00A3FF' }}>{p.progress || 0}%</strong>
-                  </div>
-                  <div style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '99px', height: '8px', overflow: 'hidden' }}>
-                    <div style={{ width: `${p.progress || 0}%`, background: 'linear-gradient(90deg, #00A3FF, #E5A93C)', height: '100%' }} />
-                  </div>
+                  {overdue && <Badge tone="err">Overdue</Badge>}
                 </div>
 
-                <div style={{ fontSize: '12px', color: '#64748B', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                  <Clock size={14} /> Deadline: {new Date(p.deadline).toLocaleDateString()}
-                </div>
-              </div>
-            </div>
-          ))}
+                {isAdmin && (
+                  <select
+                    className="select select-sm"
+                    style={{ marginTop: 12 }}
+                    value={p.status}
+                    onChange={(e) => changeStatus(p._id, e.target.value)}
+                    aria-label={`Status for ${p.projectName}`}
+                  >
+                    {PROJECT_STATUSES.map(s => (
+                      <option key={s} value={s}>{s.replace('_', ' ')}</option>
+                    ))}
+                  </select>
+                )}
+              </Card>
+            );
+          })}
         </div>
       )}
 
-      {/* Create Project Modal with Modern Deadline Picker & Presets */}
-      {showModal && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(10px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000
-        }}>
-          <div className="glass-card" style={{ maxWidth: '520px', width: '100%', padding: '30px' }}>
-            <h3 style={{ color: '#FFFFFF', fontSize: '20px', marginBottom: '18px' }}>Create New Project</h3>
-            <form onSubmit={handleCreateProject}>
-              <div className="form-group">
-                <label className="form-label">Project Name</label>
-                <input 
-                  type="text" 
-                  className="form-input" 
-                  value={newProject.projectName} 
-                  onChange={e => setNewProject({...newProject, projectName: e.target.value})} 
-                  required 
-                />
-              </div>
+      {open && (
+        <Modal
+          title="New project"
+          onClose={() => setOpen(false)}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setOpen(false)}>Cancel</button>
+              <button className="btn btn-primary" form="project-form" type="submit" disabled={saving}>
+                {saving ? 'Creating…' : 'Create project'}
+              </button>
+            </>
+          }
+        >
+          <form id="project-form" onSubmit={create}>
+            <Field label="Project name">
+              <input className="input" value={form.projectName} onChange={set('projectName')} autoFocus required />
+            </Field>
 
-              <div className="form-group">
-                <label className="form-label">Assigned Team / Department</label>
-                <select 
-                  className="form-select" 
-                  value={newProject.assignedTeam} 
-                  onChange={e => setNewProject({...newProject, assignedTeam: e.target.value})}
-                >
-                  <option value="PR TEAM">PR TEAM</option>
-                  <option value="CSD">CSD</option>
-                  <option value="TECHNICAL">TECHNICAL</option>
-                  <option value="EVENT">EVENT</option>
-                  <option value="GRAPHICS">GRAPHICS</option>
-                  <option value="DOCUMENTATION">DOCUMENTATION</option>
-                  <option value="Video">Video</option>
-                  <option value="Membership Director">Membership Director</option>
-                </select>
-              </div>
+            <Field label="Assigned team">
+              <select className="select" value={form.assignedTeam} onChange={set('assignedTeam')}>
+                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+              </select>
+            </Field>
 
-              <div className="form-group">
-                <label className="form-label">Description</label>
-                <textarea 
-                  className="form-textarea" 
-                  rows={3} 
-                  value={newProject.description} 
-                  onChange={e => setNewProject({...newProject, description: e.target.value})} 
-                  required 
-                />
-              </div>
+            <Field label="Description">
+              <textarea className="textarea" value={form.description} onChange={set('description')} required />
+            </Field>
 
-              <div className="form-group">
-                <label className="form-label">Project Deadline</label>
-                <input 
-                  type="date" 
-                  className="form-input" 
-                  value={newProject.deadline} 
-                  onChange={e => setNewProject({...newProject, deadline: e.target.value})} 
-                  required 
-                />
-                <div className="date-presets">
-                  <button type="button" onClick={() => setQuickDeadline(7)} className="date-preset-btn">+7 Days</button>
-                  <button type="button" onClick={() => setQuickDeadline(14)} className="date-preset-btn">+14 Days</button>
-                  <button type="button" onClick={() => setQuickDeadline(30)} className="date-preset-btn">+30 Days (1 Month)</button>
-                  <button type="button" onClick={() => setQuickDeadline(90)} className="date-preset-btn">+90 Days (Quarter)</button>
-                </div>
+            <Field label="Deadline">
+              <input className="input" type="date" value={form.deadline}
+                min={localDate()} onChange={set('deadline')} required />
+              <div className="presets">
+                {[7, 14, 30, 90].map(d => (
+                  <button key={d} type="button" className="preset"
+                    onClick={() => setForm(f => ({ ...f, deadline: dateFromNow(d) }))}>
+                    +{d} days
+                  </button>
+                ))}
               </div>
-
-              <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end', marginTop: '20px' }}>
-                <button type="button" onClick={() => setShowModal(false)} className="btn btn-outline">Cancel</button>
-                <button type="submit" className="btn btn-primary">Create Project</button>
-              </div>
-            </form>
-          </div>
-        </div>
+            </Field>
+          </form>
+        </Modal>
       )}
-    </div>
+    </>
   );
 }

@@ -1,210 +1,146 @@
 import React, { useState } from 'react';
 import axiosClient from '../api/axiosClient';
-import SambhavLogo from '../components/SambhavLogo';
-import { ShieldCheck, ArrowRight } from 'lucide-react';
+import AuthShell from '../components/AuthShell';
+import { Alert, Field, Spinner } from '../components/ui';
+import { DEPARTMENTS, ACADEMIC_DEPARTMENTS, SELF_ASSIGNABLE_ROLES, ROLE_LABEL } from '../constants';
+import { ShieldCheck } from 'lucide-react';
 
-export default function RegisterPage({ onNavigate, setVerifyEmail }) {
-  const [formData, setFormData] = useState({
-    fullName: '',
-    email: '',
-    password: '',
-    role: 'TEAM_MEMBER',
-    department: 'PR TEAM',
-    mobileNumber: '',
-    position: 'Member'
-  });
+const EMPTY = {
+  fullName: '',
+  email: '',
+  password: '',
+  role: 'TEAM_MEMBER',
+  department: DEPARTMENTS[0],
+  academicDepartment: '',
+  mobileNumber: '',
+  position: 'Member'
+};
+
+export default function RegisterPage({ onNavigate, setPendingEmail }) {
+  const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [infoMessage, setInfoMessage] = useState('');
+  const [done, setDone] = useState('');
 
-  const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
+  const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
-  const handleSubmit = async (e) => {
+  const submit = async (e) => {
     e.preventDefault();
+
+    if (form.password.length < 8) {
+      setError('Password must be at least 8 characters.');
+      return;
+    }
+
+    if (form.role === 'DEPARTMENT_HEAD' && !form.academicDepartment) {
+      setError('Select which academic department you head.');
+      return;
+    }
+
     setLoading(true);
     setError('');
-    setInfoMessage('');
+    setDone('');
 
     try {
-      const res = await axiosClient.post('/auth/register', formData);
+      const res = await axiosClient.post('/auth/register', form);
       if (res.success) {
-        let msg = res.message;
-        if (res.devOtp) {
-          msg += ` (Dev Testing OTP: ${res.devOtp})`;
-        }
-        setInfoMessage(msg);
-        setVerifyEmail(formData.email);
-        setTimeout(() => {
-          onNavigate('verify-otp');
-        }, 2200);
+        setDone(res.message);
+        setPendingEmail(form.email);
+        setTimeout(() => onNavigate('verify-otp'), 2000);
       }
     } catch (err) {
-      setError(err.message || 'Registration failed.');
+      setError(err.message || 'Registration could not be completed.');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '20px'
-    }}>
-      <div className="glass-card" style={{ maxWidth: '520px', width: '100%', padding: '36px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-          <div style={{ marginBottom: '12px', display: 'flex', justifyContent: 'center' }}>
-            <SambhavLogo size={130} />
-          </div>
-          <p style={{ color: '#00A3FF', fontSize: '12px', textTransform: 'uppercase', letterSpacing: '1.5px', fontWeight: 'bold' }}>
-            Admin-Gated Portal Registration
-          </p>
+    <AuthShell
+      wide
+      title="Request access"
+      subtitle="An administrator approves every new account"
+    >
+      <Alert tone="info">
+        <ShieldCheck size={17} style={{ flexShrink: 0, marginTop: 1 }} />
+        <div>Submitting sends a 6-digit code to your administrator. Ask them for it to activate your account.</div>
+      </Alert>
+
+      {error && <Alert tone="err">{error}</Alert>}
+      {done && <Alert tone="ok">{done}</Alert>}
+
+      <form onSubmit={submit}>
+        <Field label="Full name">
+          <input className="input" value={form.fullName} onChange={set('fullName')}
+            placeholder="e.g. Alex Morgan" autoComplete="name" required />
+        </Field>
+
+        <Field label="Email">
+          <input className="input" type="email" value={form.email} onChange={set('email')}
+            placeholder="you@sambhav.org" autoComplete="email" required />
+        </Field>
+
+        <Field label="Password" hint="At least 8 characters.">
+          <input className="input" type="password" value={form.password} onChange={set('password')}
+            placeholder="••••••••••" autoComplete="new-password" minLength={8} required />
+        </Field>
+
+        <div className="field-row">
+          <Field label="Role">
+            <select
+              className="select"
+              value={form.role}
+              onChange={(e) => setForm(f => ({
+                ...f,
+                role: e.target.value,
+                // Only a department head has an academic department
+                academicDepartment: e.target.value === 'DEPARTMENT_HEAD' ? f.academicDepartment : ''
+              }))}
+            >
+              {SELF_ASSIGNABLE_ROLES.map(r => (
+                <option key={r} value={r}>{ROLE_LABEL[r]}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Department">
+            <select className="select" value={form.department} onChange={set('department')}>
+              {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </Field>
         </div>
 
-        {/* Security Info Banner */}
-        <div style={{
-          background: 'rgba(0, 163, 255, 0.1)',
-          border: '1px solid rgba(0, 163, 255, 0.3)',
-          padding: '14px',
-          borderRadius: '10px',
-          marginBottom: '20px',
-          fontSize: '12px',
-          color: '#94A3B8',
-          display: 'flex',
-          gap: '10px',
-          alignItems: 'flex-start'
-        }}>
-          <ShieldCheck size={20} color="#00A3FF" style={{ flexShrink: 0, marginTop: '2px' }} />
-          <div>
-            <strong style={{ color: '#FFFFFF' }}>Admin Verification Guard:</strong> Submitting registration dispatches a secure 6-digit OTP directly to the <strong>Admin's Email</strong>.
-          </div>
-        </div>
-
-        {error && (
-          <div style={{ background: 'rgba(185, 28, 28, 0.2)', border: '1px solid #F87171', color: '#F87171', padding: '12px', borderRadius: '8px', marginBottom: '18px', fontSize: '13px' }}>
-            {error}
-          </div>
+        {form.role === 'DEPARTMENT_HEAD' && (
+          <Field label="Which department do you head?">
+            <select className="select" value={form.academicDepartment}
+              onChange={set('academicDepartment')} required>
+              <option value="">Select a department…</option>
+              {ACADEMIC_DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </Field>
         )}
 
-        {infoMessage && (
-          <div style={{ background: 'rgba(46, 125, 50, 0.2)', border: '1px solid #4CAF50', color: '#4CAF50', padding: '12px', borderRadius: '8px', marginBottom: '18px', fontSize: '13px' }}>
-            {infoMessage}
-          </div>
-        )}
+        <div className="field-row">
+          <Field label="Mobile number">
+            <input className="input" type="tel" value={form.mobileNumber} onChange={set('mobileNumber')}
+              placeholder="+91 98765 43210" autoComplete="tel" />
+          </Field>
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label className="form-label">Full Name</label>
-            <input 
-              type="text" 
-              name="fullName" 
-              className="form-input" 
-              placeholder="e.g. Alex Morgan"
-              value={formData.fullName} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Official Email</label>
-            <input 
-              type="email" 
-              name="email" 
-              className="form-input" 
-              placeholder="alex@sambhav.org"
-              value={formData.email} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="form-label">Password</label>
-            <input 
-              type="password" 
-              name="password" 
-              className="form-input" 
-              placeholder="••••••••••••"
-              value={formData.password} 
-              onChange={handleChange} 
-              required 
-            />
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            <div className="form-group">
-              <label className="form-label">Requested Role</label>
-              <select name="role" className="form-select" value={formData.role} onChange={handleChange}>
-                <option value="TEAM_MEMBER">Team Member</option>
-                <option value="TEAM_HEAD">Team Head</option>
-              </select>
-            </div>
-
-            <div className="form-group">
-              <label className="form-label">Department / Team</label>
-              <select name="department" className="form-select" value={formData.department} onChange={handleChange}>
-                <option value="PR TEAM">PR TEAM</option>
-                <option value="CSD">CSD</option>
-                <option value="TECHNICAL">TECHNICAL</option>
-                <option value="EVENT">EVENT</option>
-                <option value="GRAPHICS">GRAPHICS</option>
-                <option value="DOCUMENTATION">DOCUMENTATION</option>
-                <option value="Video">Video</option>
-                <option value="Membership Director">Membership Director</option>
-              </select>
-            </div>
-          </div>
-
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px' }}>
-            <div className="form-group">
-              <label className="form-label">Mobile Number</label>
-              <input 
-                type="tel" 
-                name="mobileNumber" 
-                className="form-input" 
-                placeholder="+91 98765 43210"
-                value={formData.mobileNumber} 
-                onChange={handleChange} 
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">Position / Designation</label>
-              <input 
-                type="text" 
-                name="position" 
-                className="form-input" 
-                placeholder="e.g. Member / Executive"
-                value={formData.position} 
-                onChange={handleChange} 
-              />
-            </div>
-          </div>
-
-          <button 
-            type="submit" 
-            className="btn btn-primary" 
-            style={{ width: '100%', padding: '14px', marginTop: '10px', fontSize: '15px' }}
-            disabled={loading}
-          >
-            {loading ? 'Dispatching Admin OTP...' : 'Request Admin Verification OTP'} <ArrowRight size={18} />
-          </button>
-        </form>
-
-        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '13px', color: '#94A3B8' }}>
-          Already have an active account?{' '}
-          <button 
-            onClick={() => onNavigate('login')} 
-            style={{ background: 'none', border: 'none', color: '#00A3FF', fontWeight: 'bold', cursor: 'pointer' }}
-          >
-            Sign In Here
-          </button>
+          <Field label="Position">
+            <input className="input" value={form.position} onChange={set('position')}
+              placeholder="e.g. Member" />
+          </Field>
         </div>
-      </div>
-    </div>
+
+        <button className="btn btn-cta" type="submit" disabled={loading || Boolean(done)} style={{ marginTop: 8 }}>
+          {loading ? <><Spinner /> Submitting…</> : 'Request verification code'}
+        </button>
+      </form>
+
+      <p className="auth-foot">
+        Already have an account?{' '}
+        <button className="auth-link" onClick={() => onNavigate('login')}>Sign In</button>
+      </p>
+    </AuthShell>
   );
 }

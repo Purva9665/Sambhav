@@ -88,11 +88,15 @@ const reviewLeave = async (req, res) => {
         </div>
       `;
 
-      await sendEmail({
+      const delivery = await sendEmail({
         to: applicant.email,
         subject: `[SAMBHAV LEAVE UPDATE] Your Leave Application is ${status}`,
         htmlText: emailHtml
       });
+
+      if (!delivery.delivered) {
+        console.warn(`[LEAVE] Decision email to ${applicant.email} was not delivered.`);
+      }
     }
 
     await logAuditEvent({
