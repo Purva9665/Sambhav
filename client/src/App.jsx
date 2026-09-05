@@ -116,6 +116,7 @@ function Workspace() {
             onQuery={setQuery}
             onMenu={() => setMenuOpen(true)}
             onAccount={() => navigate('account')}
+            onNavigate={navigate}
           />
           <main className="page">
             <Current {...pageProps} />

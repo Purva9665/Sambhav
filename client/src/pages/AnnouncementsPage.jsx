@@ -2,9 +2,9 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
 import axiosClient from '../api/axiosClient';
 import { useToast } from '../components/ui/Toast';
-import { Card, Badge, Empty, Loading, Field, PageHead, Alert } from '../components/ui';
+import { Card, Badge, Empty, Loading, Field, PageHead, Alert, Modal } from '../components/ui';
 import { DEPARTMENTS, matches } from '../constants';
-import { Megaphone, Send, Mail, Monitor } from 'lucide-react';
+import { Megaphone, Send, Mail, Monitor, Eye, EyeOff, Trash2 } from 'lucide-react';
 
 const blank = () => ({
   title: '',
@@ -23,12 +23,14 @@ export default function AnnouncementsPage({ query }) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState(blank);
+  const [busyId, setBusyId] = useState(null);
+  const [confirming, setConfirming] = useState(null);
 
   const isAdmin = user.role === 'ADMIN';
 
   const load = useCallback(async () => {
     const [a, m] = await Promise.allSettled([
-      axiosClient.get('/announcements'),
+      axiosClient.get(isAdmin ? '/announcements?includeExpired=true' : '/announcements'),
       isAdmin ? axiosClient.get('/admin/members') : Promise.resolve(null)
     ]);
     const ok = (r) => (r.status === 'fulfilled' && r.value?.success ? r.value : null);
@@ -38,6 +40,32 @@ export default function AnnouncementsPage({ query }) {
   }, [isAdmin]);
 
   useEffect(() => { load(); }, [load]);
+
+  const setVisibility = async (a, republish) => {
+    setBusyId(a._id);
+    try {
+      const res = await axiosClient.put(`/announcements/${a._id}/unpublish`, { republish });
+      if (res.success) { toast.success(res.message); load(); }
+    } catch (err) {
+      toast.error(err.message || 'Could not update the announcement.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const remove = async () => {
+    const a = confirming;
+    setBusyId(a._id);
+    setConfirming(null);
+    try {
+      const res = await axiosClient.delete(`/announcements/${a._id}`);
+      if (res.success) { toast.success(res.message); load(); }
+    } catch (err) {
+      toast.error(err.message || 'Could not delete the announcement.');
+    } finally {
+      setBusyId(null);
+    }
+  };
 
   const set = (k) => (e) => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -185,26 +213,76 @@ export default function AnnouncementsPage({ query }) {
           <div className="list">
             {visible.map(a => (
               <div className="list-row" key={a._id} style={{ alignItems: 'flex-start' }}>
-                <div className="list-mark" style={{ background: 'var(--brand-cyan-soft)', color: 'var(--brand-cyan-dark)' }}>
+                <div className="list-mark">
                   <Megaphone size={15} />
                 </div>
                 <div className="list-body">
                   <div className="row-between" style={{ alignItems: 'flex-start' }}>
-                    <div className="list-title" style={{ whiteSpace: 'normal' }}>{a.title}</div>
+                    <div className="list-title" style={{ whiteSpace: 'normal' }}>
+                      {a.title}
+                      {a.isLive === false && (
+                        <span style={{ marginLeft: 8 }}><Badge tone="mute">UNPUBLISHED</Badge></span>
+                      )}
+                    </div>
                     <div className="row" style={{ gap: 5 }}>
                       {a.channels.map(c => <Badge key={c} tone="gold">{c}</Badge>)}
                     </div>
                   </div>
-                  <p style={{ fontSize: 13.5, margin: '4px 0 6px' }}>{a.content}</p>
+                  <p style={{ fontSize: 13.5, margin: '4px 0 6px', opacity: a.isLive === false ? 0.6 : 1 }}>
+                    {a.content}
+                  </p>
                   <div className="list-meta">
                     {a.createdByName} · {a.audienceType} · {new Date(a.createdAt).toLocaleString()}
                   </div>
+
+                  {isAdmin && (
+                    <div className="row" style={{ gap: 8, marginTop: 10, flexWrap: 'wrap' }}>
+                      {a.isLive === false ? (
+                        <button className="btn btn-secondary btn-sm" disabled={busyId === a._id}
+                          onClick={() => setVisibility(a, true)}>
+                          <Eye size={13} /> Publish again
+                        </button>
+                      ) : (
+                        <button className="btn btn-secondary btn-sm" disabled={busyId === a._id}
+                          onClick={() => setVisibility(a, false)}>
+                          <EyeOff size={13} /> Unpublish
+                        </button>
+                      )}
+                      <button className="btn btn-danger btn-sm" disabled={busyId === a._id}
+                        onClick={() => setConfirming(a)}>
+                        <Trash2 size={13} /> Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
           </div>
         )}
       </Card>
+
+      {confirming && (
+        <Modal
+          title="Delete this announcement?"
+          onClose={() => setConfirming(null)}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setConfirming(null)}>Cancel</button>
+              <button className="btn btn-danger" onClick={remove}>
+                <Trash2 size={16} /> Delete permanently
+              </button>
+            </>
+          }
+        >
+          <p className="t-mute" style={{ marginBottom: 12 }}>
+            <strong>{confirming.title}</strong>
+          </p>
+          <Alert tone="warn">
+            This cannot be undone. To take it off the banner but keep the record,
+            use <strong>Unpublish</strong> instead.
+          </Alert>
+        </Modal>
+      )}
     </>
   );
 }

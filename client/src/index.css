@@ -445,6 +445,53 @@ a:hover { text-decoration: underline; }
 }
 
 /* ==========================================================================
+   Popover (notification bell)
+   ========================================================================== */
+
+.popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 330px;
+  max-height: 70vh;
+  overflow-y: auto;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  box-shadow: var(--shadow-pop);
+  z-index: 300;
+  animation: rise 0.14s ease;
+}
+
+.popover-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--line);
+}
+
+.popover-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: 100%;
+  padding: 10px;
+  border: 0;
+  border-top: 1px solid var(--line);
+  background: var(--surface-2);
+  color: var(--text-2);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+
+.popover-foot:hover { background: var(--surface-sunken); color: var(--text); }
+
+@media (max-width: 480px) {
+  .popover { width: calc(100vw - 24px); right: -8px; }
+}
+
+/* ==========================================================================
    Page header
    ========================================================================== */
 

@@ -21,16 +21,27 @@ const emailTemplate = ({ title, content, author }) => `
 // Get active banners for current user
 const getMyAnnouncements = async (req, res) => {
   try {
-    const announcements = await Announcement.find({
-      channels: 'BANNER',
+    // Admins manage the feed, so they see unpublished ones too (flagged as
+    // expired). Everyone else sees only what is currently live.
+    const isAdmin = req.user.role === 'ADMIN';
+    const includeExpired = isAdmin && req.query.includeExpired === 'true';
+
+    const liveOnly = {
       $or: [
         { expiresAt: null },
         { expiresAt: { $gt: new Date() } }
       ]
+    };
+
+    const announcements = await Announcement.find({
+      channels: 'BANNER',
+      ...(includeExpired ? {} : liveOnly)
     }).sort({ createdAt: -1 });
 
     // Filter announcements targeting this specific user/department/role
     const userAnnouncements = announcements.filter(ann => {
+      // An admin managing the feed sees everything, whoever it targets
+      if (includeExpired) return true;
       if (ann.audienceType === 'ALL') return true;
       if (ann.audienceType === 'HEADS' && ['TEAM_HEAD', 'DEPARTMENT_HEAD'].includes(req.user.role)) return true;
       if (ann.audienceType === 'DEPARTMENT' && ann.audienceTargets.includes(req.user.department)) return true;
@@ -38,9 +49,82 @@ const getMyAnnouncements = async (req, res) => {
       return false;
     });
 
-    return res.status(200).json({ success: true, count: userAnnouncements.length, announcements: userAnnouncements });
+    const now = Date.now();
+    const withState = userAnnouncements.map(a => ({
+      ...a.toObject(),
+      isLive: !a.expiresAt || a.expiresAt.getTime() > now
+    }));
+
+    return res.status(200).json({ success: true, count: withState.length, announcements: withState });
   } catch (err) {
+    console.error('[ANNOUNCEMENT LIST ERROR]', err);
     return res.status(500).json({ success: false, message: 'Failed to fetch announcements.' });
+  }
+};
+
+/**
+ * Take an announcement off the banner without destroying it.
+ * Route: PUT /api/v1/announcements/:id/unpublish   (admin only)
+ *
+ * Sets expiresAt to now, so it stops being served but the record — and who
+ * posted it — survives. Passing { republish: true } clears the expiry again.
+ */
+const setAnnouncementVisibility = async (req, res) => {
+  try {
+    const announcement = await Announcement.findById(req.params.id);
+    if (!announcement) {
+      return res.status(404).json({ success: false, message: 'Announcement not found.' });
+    }
+
+    const republish = req.body?.republish === true;
+    announcement.expiresAt = republish ? null : new Date();
+    await announcement.save();
+
+    await logAuditEvent({
+      action: 'ANNOUNCEMENT_POSTED',
+      req,
+      actorUser: req.user,
+      targetResource: `Announcement:${announcement._id}`,
+      details: { title: announcement.title, action: republish ? 'REPUBLISHED' : 'UNPUBLISHED' }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: republish ? 'Announcement is live again.' : 'Announcement unpublished.',
+      announcement: { ...announcement.toObject(), isLive: republish }
+    });
+  } catch (err) {
+    console.error('[ANNOUNCEMENT VISIBILITY ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Could not update the announcement.' });
+  }
+};
+
+/**
+ * Delete permanently.
+ * Route: DELETE /api/v1/announcements/:id   (admin only)
+ */
+const deleteAnnouncement = async (req, res) => {
+  try {
+    const announcement = await Announcement.findById(req.params.id);
+    if (!announcement) {
+      return res.status(404).json({ success: false, message: 'Announcement not found.' });
+    }
+
+    const title = announcement.title;
+    await announcement.deleteOne();
+
+    await logAuditEvent({
+      action: 'ANNOUNCEMENT_POSTED',
+      req,
+      actorUser: req.user,
+      targetResource: `Announcement:${req.params.id}`,
+      details: { title, action: 'DELETED' }
+    });
+
+    return res.status(200).json({ success: true, message: 'Announcement deleted.' });
+  } catch (err) {
+    console.error('[ANNOUNCEMENT DELETE ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Could not delete the announcement.' });
   }
 };
 
@@ -114,4 +198,9 @@ const createAnnouncement = async (req, res) => {
   }
 };
 
-module.exports = { getMyAnnouncements, createAnnouncement };
+module.exports = {
+  getMyAnnouncements,
+  createAnnouncement,
+  setAnnouncementVisibility,
+  deleteAnnouncement
+};

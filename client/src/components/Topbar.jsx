@@ -1,9 +1,10 @@
 import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Avatar } from './ui';
-import { Search, Bell, Mail, Menu } from 'lucide-react';
+import NotificationBell from './NotificationBell';
+import { Search, Menu } from 'lucide-react';
 
-export default function Topbar({ query, onQuery, onMenu, onAccount, notifications = 0 }) {
+export default function Topbar({ query, onQuery, onMenu, onAccount, onNavigate }) {
   const { user } = useAuth();
   const inputRef = useRef(null);
 
@@ -40,12 +41,9 @@ export default function Topbar({ query, onQuery, onMenu, onAccount, notification
 
       <div className="topbar-spacer" />
 
-      <button className="icon-btn" aria-label="Messages"><Mail size={17} /></button>
-
-      <button className="icon-btn" aria-label={`Notifications${notifications ? `: ${notifications} unread` : ''}`}>
-        <Bell size={17} />
-        {notifications > 0 && <span className="icon-btn-dot" />}
-      </button>
+      {/* The mail icon that used to sit here did nothing — there is no
+          messaging feature — so it is gone rather than decorative. */}
+      <NotificationBell onNavigate={onNavigate} />
 
       {user && (
         <button
