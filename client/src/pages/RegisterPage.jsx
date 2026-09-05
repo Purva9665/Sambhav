@@ -3,12 +3,13 @@ import axiosClient from '../api/axiosClient';
 import AuthShell from '../components/AuthShell';
 import { Alert, Field, Spinner } from '../components/ui';
 import { DEPARTMENTS, ACADEMIC_DEPARTMENTS, SELF_ASSIGNABLE_ROLES, ROLE_LABEL } from '../constants';
-import { ShieldCheck } from 'lucide-react';
+import { ShieldCheck, Eye, EyeOff, Check, X } from 'lucide-react';
 
 const EMPTY = {
   fullName: '',
   email: '',
   password: '',
+  confirmPassword: '',
   role: 'TEAM_MEMBER',
   department: DEPARTMENTS[0],
   academicDepartment: '',
@@ -18,6 +19,7 @@ const EMPTY = {
 
 export default function RegisterPage({ onNavigate, setPendingEmail }) {
   const [form, setForm] = useState(EMPTY);
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [done, setDone] = useState('');
@@ -32,6 +34,11 @@ export default function RegisterPage({ onNavigate, setPendingEmail }) {
       return;
     }
 
+    if (form.password !== form.confirmPassword) {
+      setError('The two passwords do not match.');
+      return;
+    }
+
     if (form.role === 'DEPARTMENT_HEAD' && !form.academicDepartment) {
       setError('Select which academic department you head.');
       return;
@@ -42,7 +49,9 @@ export default function RegisterPage({ onNavigate, setPendingEmail }) {
     setDone('');
 
     try {
-      const res = await axiosClient.post('/auth/register', form);
+      // The confirmation is a client-side check; the server has no use for it.
+      const { confirmPassword, ...payload } = form;
+      const res = await axiosClient.post('/auth/register', payload);
       if (res.success) {
         setDone(res.message);
         setPendingEmail(form.email);
@@ -81,8 +90,57 @@ export default function RegisterPage({ onNavigate, setPendingEmail }) {
         </Field>
 
         <Field label="Password" hint="At least 8 characters.">
-          <input className="input" type="password" value={form.password} onChange={set('password')}
-            placeholder="••••••••••" autoComplete="new-password" minLength={8} required />
+          <div style={{ position: 'relative' }}>
+            <input
+              className="input"
+              type={showPassword ? 'text' : 'password'}
+              value={form.password}
+              onChange={set('password')}
+              placeholder="••••••••••"
+              autoComplete="new-password"
+              minLength={8}
+              style={{ paddingRight: 48 }}
+              required
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword(v => !v)}
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+              style={{
+                position: 'absolute', right: 14, top: '50%', transform: 'translateY(-50%)',
+                background: 'none', border: 0, color: 'var(--a-text-3)', display: 'flex', padding: 4
+              }}
+            >
+              {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+            </button>
+          </div>
+        </Field>
+
+        <Field label="Confirm password">
+          <input
+            className="input"
+            type={showPassword ? 'text' : 'password'}
+            value={form.confirmPassword}
+            onChange={set('confirmPassword')}
+            placeholder="••••••••••"
+            autoComplete="new-password"
+            minLength={8}
+            required
+          />
+          {form.confirmPassword.length > 0 && (
+            <div
+              className="row"
+              style={{
+                gap: 6, marginTop: 7, fontSize: 12.5,
+                color: form.password === form.confirmPassword
+                  ? 'var(--brand-cyan)' : 'var(--brand-orange)'
+              }}
+            >
+              {form.password === form.confirmPassword
+                ? <><Check size={13} /> Passwords match</>
+                : <><X size={13} /> Passwords do not match yet</>}
+            </div>
+          )}
         </Field>
 
         <div className="field-row">

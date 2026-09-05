@@ -30,13 +30,28 @@ export const ACADEMIC_DEPARTMENTS = [
   'Polytechnic'
 ];
 
-export const ROLES = ['ADMIN', 'DEPARTMENT_HEAD', 'TEAM_HEAD', 'TEAM_MEMBER'];
+export const ROLES = [
+  'ADMIN',
+  'PRESIDENT',
+  'VICE_PRESIDENT',
+  'SECRETARY',
+  'JOINT_SECRETARY',
+  'TREASURER',
+  'DEPARTMENT_HEAD',
+  'TEAM_HEAD',
+  'TEAM_MEMBER'
+];
 
 /** Roles someone may pick for themselves when registering — never ADMIN. */
-export const SELF_ASSIGNABLE_ROLES = ['DEPARTMENT_HEAD', 'TEAM_HEAD', 'TEAM_MEMBER'];
+export const SELF_ASSIGNABLE_ROLES = ROLES.filter(r => r !== 'ADMIN');
 
 export const ROLE_LABEL = {
   ADMIN: 'Admin',
+  PRESIDENT: 'President',
+  VICE_PRESIDENT: 'Vice President',
+  SECRETARY: 'Secretary',
+  JOINT_SECRETARY: 'Joint Secretary',
+  TREASURER: 'Treasurer',
   DEPARTMENT_HEAD: 'Department Head',
   TEAM_HEAD: 'Team Head',
   TEAM_MEMBER: 'Member'
@@ -44,7 +59,12 @@ export const ROLE_LABEL = {
 
 export const ROLE_TONE = {
   ADMIN: 'orange',
-  DEPARTMENT_HEAD: 'gold',
+  PRESIDENT: 'gold',
+  VICE_PRESIDENT: 'gold',
+  SECRETARY: 'gold',
+  JOINT_SECRETARY: 'gold',
+  TREASURER: 'gold',
+  DEPARTMENT_HEAD: 'cyan',
   TEAM_HEAD: 'cyan',
   TEAM_MEMBER: 'mute'
 };

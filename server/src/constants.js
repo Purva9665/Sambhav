@@ -39,16 +39,45 @@ const ACADEMIC_DEPARTMENTS = [
 ];
 
 /**
- * Access levels, least to most privileged.
- *  ADMIN           full control, including granting admin to others
- *  DEPARTMENT_HEAD heads an academic department; sees their department's members
- *  TEAM_HEAD       heads a club team; marks attendance and assigns tasks for it
- *  TEAM_MEMBER     own data only
+ * Access levels, most privileged first.
+ *
+ * Only ADMIN carries elevated permissions. The office-bearer roles below
+ * record who someone is in the organisation; they do not by themselves grant
+ * access to the directory, the audit log or attendance marking. Make an office
+ * bearer an administrator explicitly if they need those.
  */
-const ROLES = ['ADMIN', 'DEPARTMENT_HEAD', 'TEAM_HEAD', 'TEAM_MEMBER'];
+const ROLES = [
+  'ADMIN',
+  'PRESIDENT',
+  'VICE_PRESIDENT',
+  'SECRETARY',
+  'JOINT_SECRETARY',
+  'TREASURER',
+  'DEPARTMENT_HEAD',
+  'TEAM_HEAD',
+  'TEAM_MEMBER'
+];
+
+/**
+ * Roles that see the member roster: the committee, plus the two head roles.
+ * Everything stricter than this stays ADMIN-only.
+ */
+const ROSTER_ROLES = [
+  'ADMIN',
+  'PRESIDENT',
+  'VICE_PRESIDENT',
+  'SECRETARY',
+  'JOINT_SECRETARY',
+  'TREASURER',
+  'DEPARTMENT_HEAD',
+  'TEAM_HEAD'
+];
+
+/** Roles an announcement addressed to "HEADS" reaches. */
+const HEAD_ROLES = ['DEPARTMENT_HEAD', 'TEAM_HEAD'];
 
 /** Roles a person may request when registering — never ADMIN. */
-const SELF_ASSIGNABLE_ROLES = ['DEPARTMENT_HEAD', 'TEAM_HEAD', 'TEAM_MEMBER'];
+const SELF_ASSIGNABLE_ROLES = ROLES.filter(r => r !== 'ADMIN');
 
 const STATUSES = ['PENDING_VERIFICATION', 'ACTIVE', 'SUSPENDED'];
 
@@ -63,6 +92,8 @@ module.exports = {
   ACADEMIC_DEPARTMENTS,
   ROLES,
   SELF_ASSIGNABLE_ROLES,
+  ROSTER_ROLES,
+  HEAD_ROLES,
   STATUSES,
   TASK_STATUSES,
   TASK_PRIORITIES,

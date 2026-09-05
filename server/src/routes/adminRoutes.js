@@ -6,10 +6,10 @@ const {
 } = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/auth');
 const { authorizeRoles } = require('../middleware/rbac');
+const { ROSTER_ROLES } = require('../constants');
 
 // Roster: admins, department heads and team heads
-router.get('/members', authenticateToken,
-  authorizeRoles('ADMIN', 'DEPARTMENT_HEAD', 'TEAM_HEAD'), getMemberList);
+router.get('/members', authenticateToken, authorizeRoles(...ROSTER_ROLES), getMemberList);
 
 // Full directory with contact details: admin only
 router.get('/directory', authenticateToken, authorizeRoles('ADMIN'), getTeamDirectory);

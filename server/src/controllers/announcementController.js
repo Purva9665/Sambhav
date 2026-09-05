@@ -2,6 +2,7 @@ const Announcement = require('../models/Announcement');
 const User = require('../models/User');
 const { sendEmail } = require('../utils/emailService');
 const { logAuditEvent } = require('../utils/auditHelper');
+const { HEAD_ROLES } = require('../constants');
 
 const emailTemplate = ({ title, content, author }) => `
   <div style="font-family:Arial,Helvetica,sans-serif;max-width:560px;margin:auto;border:1px solid #E2E5EA">
@@ -43,7 +44,7 @@ const getMyAnnouncements = async (req, res) => {
       // An admin managing the feed sees everything, whoever it targets
       if (includeExpired) return true;
       if (ann.audienceType === 'ALL') return true;
-      if (ann.audienceType === 'HEADS' && ['TEAM_HEAD', 'DEPARTMENT_HEAD'].includes(req.user.role)) return true;
+      if (ann.audienceType === 'HEADS' && HEAD_ROLES.includes(req.user.role)) return true;
       if (ann.audienceType === 'DEPARTMENT' && ann.audienceTargets.includes(req.user.department)) return true;
       if (ann.audienceType === 'INDIVIDUALS' && ann.audienceTargets.includes(req.user._id.toString())) return true;
       return false;
@@ -157,7 +158,7 @@ const createAnnouncement = async (req, res) => {
     if (selectedChannels.includes('EMAIL')) {
       const recipientQuery = { status: 'ACTIVE' };
 
-      if (audienceType === 'HEADS') recipientQuery.role = { $in: ['TEAM_HEAD', 'DEPARTMENT_HEAD'] };
+      if (audienceType === 'HEADS') recipientQuery.role = { $in: HEAD_ROLES };
       else if (audienceType === 'DEPARTMENT') recipientQuery.department = { $in: audienceTargets };
       else if (audienceType === 'INDIVIDUALS') recipientQuery._id = { $in: audienceTargets };
 
