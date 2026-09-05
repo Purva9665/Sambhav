@@ -109,7 +109,8 @@ export default function DashboardPage({ query, navigate }) {
   const openTasks = tasks.filter(t => t.status !== 'COMPLETED');
   const activeProjects = projects.filter(p => p.status !== 'COMPLETED');
   const myTasks = openTasks
-    .filter(t => matches(query, t.title, t.assignedToName, t.projectId?.projectName))
+    .filter(t => matches(query, t.title, t.projectId?.projectName,
+      ...(t.assignees || []).map(a => a.name)))
     .slice(0, 5);
 
   const banners = announcements.filter(a => !dismissed.includes(a._id)).slice(0, 2);
@@ -260,9 +261,13 @@ export default function DashboardPage({ query, navigate }) {
             <div className="list">
               {myTasks.map(t => (
                 <div className="list-row" key={t._id}>
-                  <Avatar name={t.assignedToName} size={32} />
+                  <Avatar name={t.assignees?.[0]?.name || '?'} size={32} />
                   <div className="list-body">
-                    <div className="list-title">{t.assignedToName}</div>
+                    <div className="list-title">
+                      {(t.assignees || []).length > 1
+                        ? `${t.assignees[0].name} +${t.assignees.length - 1}`
+                        : (t.assignees?.[0]?.name || 'Unassigned')}
+                    </div>
                     <div className="list-meta truncate">Working on <strong>{t.title}</strong></div>
                   </div>
                   <Badge tone={toneFor(t.status)}>{t.status.replace('_', ' ')}</Badge>
