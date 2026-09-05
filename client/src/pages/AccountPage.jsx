@@ -101,7 +101,7 @@ export default function AccountPage() {
     <>
       <PageHead title="My Account" subtitle="Your profile and password." />
 
-      <div className="grid mb-16" style={{ gridTemplateColumns: 'minmax(0,1fr) minmax(0,1.4fr)' }}>
+      <div className="grid grid-side-main mb-16">
         <Card title="Profile">
           <div className="row" style={{ gap: 14, marginBottom: 18 }}>
             <Avatar name={user.fullName} size={52} />

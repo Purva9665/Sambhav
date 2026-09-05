@@ -184,7 +184,7 @@ export default function DashboardPage({ query, navigate }) {
         />
       </div>
 
-      <div className="grid mb-16" style={{ gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr)' }}>
+      <div className="grid grid-main-side mb-16">
         <Card title="Attendance This Week" action={<Badge tone="cyan">Last 7 days</Badge>}>
           {week.every(d => d.pct == null) ? (
             <Empty icon={CalendarDays} title="No attendance yet"
@@ -241,7 +241,7 @@ export default function DashboardPage({ query, navigate }) {
         </Card>
       </div>
 
-      <div className="grid" style={{ gridTemplateColumns: 'minmax(0,2fr) minmax(0,1fr) minmax(0,1fr)' }}>
+      <div className="grid grid-wide-thirds">
         <Card
           title={isOrgWide ? 'Team Activity' : 'Your Tasks'}
           flush
