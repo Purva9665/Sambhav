@@ -25,6 +25,7 @@ export default function AnnouncementsPage({ query }) {
   const [form, setForm] = useState(blank);
   const [busyId, setBusyId] = useState(null);
   const [confirming, setConfirming] = useState(null);
+  const [lastEmailReport, setLastEmailReport] = useState(null);
 
   const isAdmin = user.role === 'ADMIN';
 
@@ -97,11 +98,27 @@ export default function AnnouncementsPage({ query }) {
     try {
       const res = await axiosClient.post('/announcements', form);
       if (res.success) {
-        toast.success(
-          form.channels.includes('EMAIL')
-            ? 'Announcement published and emails queued.'
-            : 'Announcement published.'
-        );
+        // The server reports how many emails actually went out. Say that,
+        // rather than claiming they were "queued" and hoping.
+        const email = res.email;
+        if (!email) {
+          toast.success('Announcement published.');
+        } else if (email.delivered === email.attempted) {
+          toast.success(
+            `Announcement published and emailed to ${email.delivered} ` +
+            `${email.delivered === 1 ? 'person' : 'people'}.`
+          );
+        } else if (email.delivered > 0) {
+          toast.error(
+            `Published, but only ${email.delivered} of ${email.attempted} emails were delivered.`
+          );
+        } else {
+          toast.error(
+            `Published, but no emails could be delivered (${email.attempted} attempted). ` +
+            `Check SENDGRID_API_KEY and SENDGRID_FROM_EMAIL.`
+          );
+        }
+        setLastEmailReport(email || null);
         setForm(blank());
         load();
       }
@@ -189,10 +206,12 @@ export default function AnnouncementsPage({ query }) {
               </Field>
             )}
 
-            {form.channels.includes('EMAIL') && (
-              <Alert tone="warn">
-                Email delivery requires a verified SendGrid sender. Check the announcement
-                appears in the banner feed below to confirm it was published.
+            {lastEmailReport && (
+              <Alert tone={lastEmailReport.failed === 0 ? 'ok' : 'err'}>
+                {lastEmailReport.failed === 0
+                  ? `Last send: ${lastEmailReport.delivered} of ${lastEmailReport.attempted} emails delivered.`
+                  : `Last send: ${lastEmailReport.failed} of ${lastEmailReport.attempted} emails failed. ` +
+                    `The server log records the reason for each.`}
               </Alert>
             )}
 
