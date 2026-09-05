@@ -334,7 +334,79 @@ const clearAuditLogs = async (req, res) => {
   }
 };
 
+/**
+ * Delete an account.
+ * Route: DELETE /api/v1/admin/users/:userId   (admin only)
+ *
+ * Their attendance and leave records go too, so nothing is left pointing at a
+ * user who no longer exists. Audit entries stay: they are the security trail.
+ */
+const deleteUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.userId);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found.' });
+    }
+
+    if (String(user._id) === String(req.user._id)) {
+      return res.status(400).json({ success: false, message: 'You cannot delete your own account.' });
+    }
+
+    if (user.role === 'ADMIN') {
+      const others = await User.countDocuments({
+        role: 'ADMIN', status: 'ACTIVE', _id: { $ne: user._id }
+      });
+      if (others === 0) {
+        return res.status(400).json({
+          success: false,
+          message: 'This is the only active administrator. Promote someone else first.'
+        });
+      }
+    }
+
+    const AttendanceRecord = require('../models/AttendanceRecord');
+    const LeaveRequest = require('../models/LeaveRequest');
+    const ProfileChangeRequest = require('../models/ProfileChangeRequest');
+
+    const [attendance, leave, requests] = await Promise.all([
+      AttendanceRecord.deleteMany({ userId: user._id }),
+      LeaveRequest.deleteMany({ userId: user._id }),
+      ProfileChangeRequest.deleteMany({ userId: user._id })
+    ]);
+
+    const snapshot = {
+      email: user.email, fullName: user.fullName,
+      role: user.role, status: user.status, department: user.department
+    };
+    await user.deleteOne();
+
+    await logAuditEvent({
+      action: 'USER_DELETED',
+      req,
+      actorUser: req.user,
+      targetResource: `User:${req.params.userId}`,
+      details: {
+        ...snapshot,
+        removed: {
+          attendance: attendance.deletedCount,
+          leave: leave.deletedCount,
+          changeRequests: requests.deletedCount
+        }
+      }
+    });
+
+    return res.status(200).json({
+      success: true,
+      message: `${snapshot.fullName}'s account has been deleted.`
+    });
+  } catch (err) {
+    console.error('[USER DELETE ERROR]', err);
+    return res.status(500).json({ success: false, message: 'Could not delete the account.' });
+  }
+};
+
 module.exports = {
+  deleteUser,
   clearAuditLogs,
   createUser,
   getMemberList,

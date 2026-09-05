@@ -57,7 +57,15 @@ const register = async (req, res) => {
 
     const normalisedEmail = String(email).toLowerCase().trim();
 
-    if (await User.findOne({ email: normalisedEmail })) {
+    const existing = await User.findOne({ email: normalisedEmail });
+
+    // An account that was never verified is not really an account: it holds
+    // the address hostage, so nobody could re-register after an OTP expired
+    // and the only fix was deleting the row by hand. Registering again simply
+    // replaces it with the new details and a fresh code.
+    if (existing && existing.status === 'PENDING_VERIFICATION') {
+      await existing.deleteOne();
+    } else if (existing) {
       return res.status(400).json({
         success: false,
         message: 'An account with this email already exists.'

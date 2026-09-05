@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const {
   createUser, getMemberList, getTeamDirectory,
-  getAuditLogs, clearAuditLogs, updateUserRole
+  getAuditLogs, clearAuditLogs, updateUserRole, deleteUser
 } = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/auth');
 const { authorizeRoles } = require('../middleware/rbac');
@@ -26,5 +26,8 @@ router.post('/users', authenticateToken, authorizeRoles('ADMIN'), createUser);
 // Role, status, team, academic department and position changes: admin only.
 // This is also how an additional administrator is appointed.
 router.put('/users/:userId', authenticateToken, authorizeRoles('ADMIN'), updateUserRole);
+
+// Remove an account and the records tied to it: admin only
+router.delete('/users/:userId', authenticateToken, authorizeRoles('ADMIN'), deleteUser);
 
 module.exports = router;

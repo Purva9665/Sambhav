@@ -28,6 +28,7 @@ const auditLogSchema = new mongoose.Schema({
       'ADMIN_GRANTED',
       'ADMIN_REVOKED',
       'USER_CREATED',
+      'USER_DELETED',
       'AUDIT_LOGS_CLEARED',
       'PROFILE_CHANGE_REQUESTED',
       'PROFILE_CHANGE_APPROVED',

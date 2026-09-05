@@ -5,7 +5,7 @@ import { useToast } from '../components/ui/Toast';
 import { Card, Badge, Empty, Loading, PageHead, Avatar, Alert, Modal, Field, toneFor } from '../components/ui';
 import { DEPARTMENTS, ACADEMIC_DEPARTMENTS, ROLES, ROLE_LABEL, ROLE_TONE, matches } from '../constants';
 import CreateUserModal from '../components/CreateUserModal';
-import { BookUser, ShieldAlert, Lock, ShieldPlus, Crown, UserPlus } from 'lucide-react';
+import { BookUser, ShieldAlert, Lock, ShieldPlus, Crown, UserPlus, Trash2 } from 'lucide-react';
 
 export default function DirectoryPage({ query }) {
   const { user } = useAuth();
@@ -18,6 +18,7 @@ export default function DirectoryPage({ query }) {
   const [promoting, setPromoting] = useState(null); // user object pending confirmation
   const [pickId, setPickId] = useState('');
   const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -47,6 +48,20 @@ export default function DirectoryPage({ query }) {
     } catch (err) {
       setRows(before);
       toast.error(err.message || 'Could not update this member.');
+    } finally {
+      setBusyId(null);
+    }
+  };
+
+  const confirmDelete = async () => {
+    const target = deleting;
+    setDeleting(null);
+    setBusyId(target._id);
+    try {
+      const res = await axiosClient.delete(`/admin/users/${target._id}`);
+      if (res.success) { toast.success(res.message); load(); }
+    } catch (err) {
+      toast.error(err.message || 'Could not delete the account.');
     } finally {
       setBusyId(null);
     }
@@ -125,6 +140,7 @@ export default function DirectoryPage({ query }) {
                 <th>Mobile</th>
                 <th>Position</th>
                 <th>Status</th>
+                <th></th>
               </tr>
             </thead>
             <tbody>
@@ -228,6 +244,19 @@ export default function DirectoryPage({ query }) {
                         <option value="SUSPENDED">Suspended</option>
                       </select>
                     </td>
+
+                    <td>
+                      {!isSelf && (
+                        <button
+                          className="btn btn-danger btn-sm"
+                          disabled={busy}
+                          onClick={() => setDeleting(u)}
+                          title={`Delete ${u.fullName}'s account`}
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 );
               })}
@@ -238,6 +267,48 @@ export default function DirectoryPage({ query }) {
 
       {creating && (
         <CreateUserModal onClose={() => setCreating(false)} onCreated={load} />
+      )}
+
+      {deleting && (
+        <Modal
+          title="Delete this account?"
+          onClose={() => setDeleting(null)}
+          footer={
+            <>
+              <button className="btn btn-secondary" onClick={() => setDeleting(null)}>Cancel</button>
+              <button className="btn btn-danger" onClick={confirmDelete}>
+                <Trash2 size={16} /> Delete permanently
+              </button>
+            </>
+          }
+        >
+          <div className="row" style={{ gap: 12, marginBottom: 14 }}>
+            <Avatar name={deleting.fullName} size={44} />
+            <div style={{ minWidth: 0 }}>
+              <div className="t-strong">{deleting.fullName}</div>
+              <div className="t-dim truncate">{deleting.email}</div>
+              <div className="row" style={{ gap: 6, marginTop: 6 }}>
+                <Badge tone={ROLE_TONE[deleting.role]}>{ROLE_LABEL[deleting.role]}</Badge>
+                {deleting.status !== 'ACTIVE' && (
+                  <Badge tone="warn">{deleting.status.replace('_', ' ')}</Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Alert tone="warn">
+            This removes the account along with its attendance, leave and change
+            requests. It cannot be undone. To block someone without losing their
+            history, set their status to <strong>Suspended</strong> instead.
+          </Alert>
+
+          {deleting.status === 'PENDING_VERIFICATION' && (
+            <p className="t-dim">
+              This account was never verified, so deleting it frees the email
+              address to register again.
+            </p>
+          )}
+        </Modal>
       )}
 
       {promoting?.picker && (
