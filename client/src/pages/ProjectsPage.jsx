@@ -3,12 +3,14 @@ import { useAuth } from '../context/AuthContext';
 import axiosClient from '../api/axiosClient';
 import { useToast } from '../components/ui/Toast';
 import { Card, Badge, Empty, Loading, Modal, Field, PageHead, toneFor } from '../components/ui';
-import { DEPARTMENTS, PROJECT_STATUSES, localDate, dateFromNow, matches } from '../constants';
-import { FolderKanban, Plus, CalendarClock } from 'lucide-react';
+import AssigneePicker from '../components/AssigneePicker';
+import { Avatar } from '../components/ui';
+import { PROJECT_STATUSES, localDate, dateFromNow, matches } from '../constants';
+import { FolderKanban, Plus, CalendarClock, Users } from 'lucide-react';
 
 const blank = () => ({
   projectName: '',
-  assignedTeam: DEPARTMENTS[0],
+  memberIds: [],
   description: '',
   deadline: dateFromNow(14)
 });
@@ -18,6 +20,7 @@ export default function ProjectsPage({ query }) {
   const toast = useToast();
 
   const [projects, setProjects] = useState([]);
+  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -27,14 +30,20 @@ export default function ProjectsPage({ query }) {
 
   const load = useCallback(async () => {
     try {
-      const res = await axiosClient.get('/projects');
-      if (res.success) setProjects(res.projects);
+      const [p, m] = await Promise.allSettled([
+        axiosClient.get('/projects'),
+        user.role === 'TEAM_MEMBER' ? Promise.resolve(null) : axiosClient.get('/admin/members')
+      ]);
+      const ok = (r) => (r.status === 'fulfilled' && r.value?.success ? r.value : null);
+      setProjects(ok(p)?.projects ?? []);
+      setMembers(ok(m)?.members ?? []);
+      if (p.status === 'rejected') throw p.reason;
     } catch (err) {
       toast.error(err.message || 'Could not load projects.');
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [toast, user.role]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -42,6 +51,10 @@ export default function ProjectsPage({ query }) {
 
   const create = async (e) => {
     e.preventDefault();
+    if (form.memberIds.length === 0) {
+      toast.error('Choose at least one person for this project.');
+      return;
+    }
     setSaving(true);
     try {
       const res = await axiosClient.post('/projects', form);
@@ -71,7 +84,8 @@ export default function ProjectsPage({ query }) {
   };
 
   const visible = projects.filter(p =>
-    matches(query, p.projectName, p.description, p.assignedTeam, p.status)
+    matches(query, p.projectName, p.description, p.status,
+      ...(p.teams || []), ...(p.members || []).map(m => m.name))
   );
 
   return (
@@ -111,12 +125,35 @@ export default function ProjectsPage({ query }) {
             return (
               <Card key={p._id}>
                 <div className="row-between" style={{ marginBottom: 12 }}>
-                  <Badge tone="cyan">{p.assignedTeam}</Badge>
+                  <div className="row" style={{ gap: 5, flexWrap: 'wrap' }}>
+                    {(p.teams || []).slice(0, 2).map(t => (
+                      <Badge key={t} tone="cyan">{t}</Badge>
+                    ))}
+                    {(p.teams || []).length > 2 && (
+                      <Badge tone="mute">+{p.teams.length - 2}</Badge>
+                    )}
+                  </div>
                   <Badge tone={toneFor(p.status)}>{p.status.replace('_', ' ')}</Badge>
                 </div>
 
                 <h3 className="card-title" style={{ marginBottom: 6 }}>{p.projectName}</h3>
-                <p className="t-mute" style={{ fontSize: 13, marginBottom: 16 }}>{p.description}</p>
+                <p className="t-mute" style={{ fontSize: 13, marginBottom: 14 }}>{p.description}</p>
+
+                {(p.members || []).length > 0 && (
+                  <div className="row" style={{ gap: 8, marginBottom: 14 }}>
+                    <div className="row" style={{ gap: 0 }}>
+                      {p.members.slice(0, 4).map(m => (
+                        <span key={String(m.userId)} title={`${m.name} — ${m.team}`} style={{ marginRight: -8 }}>
+                          <Avatar name={m.name} size={26} />
+                        </span>
+                      ))}
+                    </div>
+                    <span className="t-dim" style={{ marginLeft: 10, display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                      <Users size={12} />
+                      {p.members.length} {p.members.length === 1 ? 'member' : 'members'}
+                    </span>
+                  </div>
+                )}
 
                 <div className="row-between" style={{ fontSize: 12, marginBottom: 6 }}>
                   <span className="t-dim">Progress</span>
@@ -171,11 +208,13 @@ export default function ProjectsPage({ query }) {
               <input className="input" value={form.projectName} onChange={set('projectName')} autoFocus required />
             </Field>
 
-            <Field label="Assigned team">
-              <select className="select" value={form.assignedTeam} onChange={set('assignedTeam')}>
-                {DEPARTMENTS.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </Field>
+            <AssigneePicker
+              label="Project members"
+              hint="Pick people, or add a whole team. The project holds the people chosen now, so someone joining that team later is not added automatically."
+              members={members}
+              value={form.memberIds}
+              onChange={(ids) => setForm(f => ({ ...f, memberIds: ids }))}
+            />
 
             <Field label="Description">
               <textarea className="textarea" value={form.description} onChange={set('description')} required />

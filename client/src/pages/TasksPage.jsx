@@ -223,7 +223,9 @@ export default function TasksPage({ query }) {
               <select className="select" value={form.projectId} onChange={set('projectId')} required>
                 <option value="">Select a project…</option>
                 {projects.map(p => (
-                  <option key={p._id} value={p._id}>{p.projectName} ({p.assignedTeam})</option>
+                  <option key={p._id} value={p._id}>
+                    {p.projectName}{(p.teams || []).length ? ` (${p.teams.join(', ')})` : ''}
+                  </option>
                 ))}
               </select>
             </Field>

@@ -11,7 +11,7 @@ import { Search, X, Users, Check } from 'lucide-react';
  * ends up holding real people rather than a team name, so someone who joins
  * the team next month does not silently inherit today's work.
  */
-export default function AssigneePicker({ members, value, onChange, restrictToTeam }) {
+export default function AssigneePicker({ members, value, onChange, restrictToTeam, label, hint }) {
   const [search, setSearch] = useState('');
 
   const available = useMemo(
@@ -44,8 +44,8 @@ export default function AssigneePicker({ members, value, onChange, restrictToTea
 
   return (
     <Field
-      label={`Assign to${value.length ? ` — ${value.length} selected` : ''}`}
-      hint="One shared task. Anyone on it can move its status, and completing it completes it for everyone."
+      label={`${label || 'Assign to'}${value.length ? ` — ${value.length} selected` : ''}`}
+      hint={hint ?? 'One shared task. Anyone on it can move its status, and completing it completes it for everyone.'}
     >
       {teams.length > 0 && (
         <div className="presets" style={{ marginTop: 0, marginBottom: 10 }}>
