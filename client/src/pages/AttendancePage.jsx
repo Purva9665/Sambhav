@@ -4,7 +4,8 @@ import axiosClient from '../api/axiosClient';
 import { useToast } from '../components/ui/Toast';
 import { Card, Stat, Badge, Empty, Loading, PageHead, Avatar, toneFor } from '../components/ui';
 import { localDate, localMonth, matches } from '../constants';
-import { CalendarDays, Save, UserCheck, UserX, X, CheckCheck } from 'lucide-react';
+import AttendanceExport from '../components/AttendanceExport';
+import { CalendarDays, Save, UserCheck, UserX, X, CheckCheck, Download, Lock, LockOpen } from 'lucide-react';
 
 export default function AttendancePage({ query }) {
   const { user } = useAuth();
@@ -18,6 +19,8 @@ export default function AttendancePage({ query }) {
   const [records, setRecords] = useState([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [locking, setLocking] = useState(false);
 
   const [month, setMonth] = useState('');
   const [status, setStatus] = useState('ALL');
@@ -112,16 +115,54 @@ export default function AttendancePage({ query }) {
             : 'Your attendance record and rate.'
         }
         actions={
-          canMark && session ? (
-            <>
-              <button className="btn btn-secondary" onClick={() => markAll('PRESENT')}>
-                <CheckCheck size={16} /> All present
+          <>
+            {/* Everyone can export; the server returns only what their role
+                permits, so a member gets their own rows and nothing else. */}
+            <button className="btn btn-secondary" onClick={() => setExporting(true)}>
+              <Download size={16} /> Export
+            </button>
+
+            {canMark && session && (
+              <>
+                <button className="btn btn-secondary" onClick={() => markAll('PRESENT')}
+                  disabled={session.status === 'CLOSED'}>
+                  <CheckCheck size={16} /> All present
+                </button>
+                <button className="btn btn-primary" onClick={save}
+                  disabled={saving || session.status === 'CLOSED'}>
+                  <Save size={16} /> {saving ? 'Saving…' : 'Save attendance'}
+                </button>
+              </>
+            )}
+
+            {user.role === 'ADMIN' && session && (
+              <button
+                className="btn btn-secondary"
+                disabled={locking}
+                onClick={async () => {
+                  const reopen = session.status === 'CLOSED';
+                  setLocking(true);
+                  try {
+                    const res = await axiosClient.put(
+                      `/attendance/sessions/${session._id}/close`, { reopen }
+                    );
+                    if (res.success) {
+                      toast.success(res.message);
+                      setSession(res.session);
+                    }
+                  } catch (err) {
+                    toast.error(err.message || 'Could not update the session.');
+                  } finally {
+                    setLocking(false);
+                  }
+                }}
+              >
+                {session.status === 'CLOSED'
+                  ? <><LockOpen size={16} /> Reopen day</>
+                  : <><Lock size={16} /> Close day</>}
               </button>
-              <button className="btn btn-primary" onClick={save} disabled={saving}>
-                <Save size={16} /> {saving ? 'Saving…' : 'Save attendance'}
-              </button>
-            </>
-          ) : null
+            )}
+          </>
         }
       />
 
@@ -136,6 +177,16 @@ export default function AttendancePage({ query }) {
           <Stat label="Present" value={stats.presentDays} foot="Marked present" />
           <Stat label="Absent" value={stats.absentDays} foot="Marked absent" />
           <Stat label="Sessions" value={stats.totalDays} foot={orgWide ? 'All members' : 'Your records'} />
+        </div>
+      )}
+
+      {canMark && session?.status === 'CLOSED' && (
+        <div className="alert alert-warn">
+          <Lock size={16} style={{ flexShrink: 0, marginTop: 1 }} />
+          <div>
+            Attendance for this day is closed and can no longer be changed.
+            An administrator can reopen it.
+          </div>
         </div>
       )}
 
@@ -276,6 +327,8 @@ export default function AttendancePage({ query }) {
           </div>
         )}
       </Card>
+
+      {exporting && <AttendanceExport onClose={() => setExporting(false)} />}
     </>
   );
 }
