@@ -25,7 +25,8 @@ export default function AttendancePage({ query }) {
   const [month, setMonth] = useState('');
   const [status, setStatus] = useState('ALL');
 
-  const canMark = user.role === 'ADMIN' || user.role === 'TEAM_HEAD';
+  // Marking is an administrator action only.
+  const canMark = user.role === 'ADMIN';
 
   const load = useCallback(async () => {
     try {
@@ -112,7 +113,7 @@ export default function AttendancePage({ query }) {
         subtitle={
           canMark
             ? 'Mark today’s session and review the attendance history.'
-            : 'Your attendance record and rate.'
+            : 'Your attendance record and rate. Only an administrator can mark attendance.'
         }
         actions={
           <>
@@ -135,7 +136,7 @@ export default function AttendancePage({ query }) {
               </>
             )}
 
-            {user.role === 'ADMIN' && session && (
+            {canMark && session && (
               <button
                 className="btn btn-secondary"
                 disabled={locking}

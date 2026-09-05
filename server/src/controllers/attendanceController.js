@@ -23,7 +23,7 @@ function visibilityFor(user) {
 
 /**
  * Open (or fetch) today's session and return the roster to mark.
- * Admins see everyone; team heads see only their own team.
+ * Marking is an administrator action, so the roster is always everyone.
  */
 const startSession = async (req, res) => {
   try {
@@ -41,10 +41,7 @@ const startSession = async (req, res) => {
       });
     }
 
-    const rosterFilter = { status: 'ACTIVE' };
-    if (req.user.role === 'TEAM_HEAD') rosterFilter.department = req.user.department;
-
-    const users = await User.find(rosterFilter)
+    const users = await User.find({ status: 'ACTIVE' })
       .select('fullName role department')
       .sort({ fullName: 1 });
 
@@ -91,16 +88,22 @@ const markAttendance = async (req, res) => {
 
     const byId = new Map(targets.map(u => [String(u._id), u]));
 
-    // A team head may only mark their own team, even if the client submits
-    // other user ids.
-    const permitted = records.filter(r => {
-      const target = byId.get(String(r.userId));
-      if (!target) return false;
-      return req.user.role === 'ADMIN' || target.department === req.user.department;
-    });
+    // The route already restricts this to administrators; this second check
+    // means a future route change cannot silently widen who gets marked.
+    if (req.user.role !== 'ADMIN') {
+      return res.status(403).json({
+        success: false,
+        message: 'Only an administrator can mark attendance.'
+      });
+    }
+
+    const permitted = records.filter(r => byId.has(String(r.userId)));
 
     if (permitted.length === 0) {
-      return res.status(403).json({ success: false, message: 'None of these members are yours to mark.' });
+      return res.status(400).json({
+        success: false,
+        message: 'None of those members could be found, or they are not active.'
+      });
     }
 
     // Read what is already there so a correction can be recorded rather than

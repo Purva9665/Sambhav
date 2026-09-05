@@ -106,15 +106,21 @@ const check = (label, ok, detail = '') => {
   const memberSession = await call('GET', '/attendance/session', { token: ev1T });
   check('a member CANNOT open a marking session', memberSession.status === 403, `${memberSession.status}`);
 
-  // A team head marking someone outside their team must be ignored server-side
-  const crossMark = await call('POST', '/attendance/mark', {
-    token: headT, body: { sessionId, records: [{ userId: String(pr1._id), status: 'PRESENT' }] }
+  // Marking is administrators only — a team head is refused for anyone,
+  // including their own team.
+  const headOwnTeam = await call('POST', '/attendance/mark', {
+    token: headT, body: { sessionId, records: [{ userId: String(ev1._id), status: 'ABSENT' }] }
   });
-  check('a team head CANNOT mark another team', crossMark.status === 403, `${crossMark.status}`);
+  check('a team head CANNOT mark even their own team',
+    headOwnTeam.status === 403, `${headOwnTeam.status}`);
 
-  const prRecord = await Record.findOne({ sessionId, userId: pr1._id });
-  check('the cross-team mark did not change the stored value',
-    prRecord.status === 'ABSENT', `stored ${prRecord.status}`);
+  const headSession = await call('GET', '/attendance/session', { token: headT });
+  check('a team head CANNOT open a marking session', headSession.status === 403,
+    `${headSession.status}`);
+
+  const ev1Record = await Record.findOne({ sessionId, userId: ev1._id });
+  check('the refused mark did not change the stored value',
+    ev1Record.status === 'PRESENT', `stored ${ev1Record.status}`);
 
   // ------------------------------------------------------ read visibility
   const asMember = await call('GET', '/attendance/my-records', { token: ev1T });
