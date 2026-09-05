@@ -1407,6 +1407,20 @@ a:hover { text-decoration: underline; }
 
 /* --- OTP ----------------------------------------------------------------- */
 
+/* Shown while a request is waiting on a sleeping free-tier server */
+.waking {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  padding: 11px 13px;
+  margin-bottom: 16px;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--gold);
+  background: rgba(242, 178, 51, 0.08);
+  border: 1px solid rgba(242, 178, 51, 0.28);
+}
+
 .otp-input {
   font-size: 26px;
   letter-spacing: 0.5em;
