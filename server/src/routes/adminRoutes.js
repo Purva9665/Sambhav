@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-  createUser, getMemberList, getTeamDirectory, getDepartmentHeads,
+  createUser, getMemberList, getTeamDirectory,
   getAuditLogs, clearAuditLogs, updateUserRole
 } = require('../controllers/adminController');
 const { authenticateToken } = require('../middleware/auth');
@@ -10,9 +10,6 @@ const { authorizeRoles } = require('../middleware/rbac');
 // Roster: admins, department heads and team heads
 router.get('/members', authenticateToken,
   authorizeRoles('ADMIN', 'DEPARTMENT_HEAD', 'TEAM_HEAD'), getMemberList);
-
-// Who heads which academic department — visible to every signed-in user
-router.get('/department-heads', authenticateToken, getDepartmentHeads);
 
 // Full directory with contact details: admin only
 router.get('/directory', authenticateToken, authorizeRoles('ADMIN'), getTeamDirectory);

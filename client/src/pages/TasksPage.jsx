@@ -4,13 +4,15 @@ import axiosClient from '../api/axiosClient';
 import { useToast } from '../components/ui/Toast';
 import { Card, Badge, Empty, Loading, Modal, Field, PageHead, Alert, toneFor } from '../components/ui';
 import { TASK_STATUSES, TASK_PRIORITIES, localDate, dateFromNow, matches } from '../constants';
-import { CheckSquare, Plus, ShieldCheck } from 'lucide-react';
+import AssigneePicker from '../components/AssigneePicker';
+import { Avatar } from '../components/ui';
+import { CheckSquare, Plus, ShieldCheck, Users } from 'lucide-react';
 
 const blank = () => ({
   title: '',
   description: '',
   projectId: '',
-  assignedToUserId: '',
+  assigneeIds: [],
   priority: 'MEDIUM',
   dueDate: dateFromNow(7)
 });
@@ -82,7 +84,8 @@ export default function TasksPage({ query }) {
     : members;
 
   const visible = tasks.filter(t =>
-    matches(query, t.title, t.description, t.assignedToName, t.team, t.status, t.priority)
+    matches(query, t.title, t.description, t.status, t.priority,
+      ...(t.assignees || []).map(a => a.name), ...(t.teams || []))
   );
 
   return (
@@ -137,9 +140,28 @@ export default function TasksPage({ query }) {
                       <div className="t-dim truncate">{t.description}</div>
                     </td>
                     <td><Badge tone="cyan">{t.projectId?.projectName || '—'}</Badge></td>
-                    <td>
-                      <div className="t-strong">{t.assignedToName}</div>
-                      <div className="t-dim">{t.team}</div>
+                    <td style={{ maxWidth: 220 }}>
+                      {(t.assignees || []).length === 1 ? (
+                        <>
+                          <div className="t-strong">{t.assignees[0].name}</div>
+                          <div className="t-dim">{t.assignees[0].team}</div>
+                        </>
+                      ) : (
+                        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+                          <div className="row" style={{ gap: -6 }}>
+                            {(t.assignees || []).slice(0, 3).map(a => (
+                              <span key={String(a.userId)} title={`${a.name} — ${a.team}`}
+                                    style={{ marginRight: -8 }}>
+                                <Avatar name={a.name} size={26} />
+                              </span>
+                            ))}
+                          </div>
+                          <span className="t-dim" style={{ marginLeft: 10 }}
+                                title={(t.assignees || []).map(a => a.name).join(', ')}>
+                            <Users size={11} /> {(t.assignees || []).length} people
+                          </span>
+                        </div>
+                      )}
                     </td>
                     <td><Badge tone={toneFor(t.priority)}>{t.priority}</Badge></td>
                     <td>
@@ -206,14 +228,12 @@ export default function TasksPage({ query }) {
               </select>
             </Field>
 
-            <Field label="Assignee">
-              <select className="select" value={form.assignedToUserId} onChange={set('assignedToUserId')} required>
-                <option value="">Select a member…</option>
-                {assignable.map(m => (
-                  <option key={m._id} value={m._id}>{m.fullName} — {m.department}</option>
-                ))}
-              </select>
-            </Field>
+            <AssigneePicker
+              members={members}
+              value={form.assigneeIds}
+              onChange={(ids) => setForm(f => ({ ...f, assigneeIds: ids }))}
+              restrictToTeam={user.role === 'TEAM_HEAD' ? user.department : null}
+            />
 
             <div className="field-row">
               <Field label="Priority">

@@ -41,41 +41,6 @@ const getTeamDirectory = async (req, res) => {
   }
 };
 
-/**
- * Every academic department with whoever heads it.
- * Departments with no head are still listed, so the gaps are visible.
- */
-const getDepartmentHeads = async (req, res) => {
-  try {
-    const heads = await User.find({
-      role: 'DEPARTMENT_HEAD',
-      academicDepartment: { $nin: ['', null] }
-    })
-      .select('fullName email mobileNumber department academicDepartment position status')
-      .sort({ academicDepartment: 1, fullName: 1 });
-
-    const byDepartment = ACADEMIC_DEPARTMENTS.map(name => ({
-      department: name,
-      heads: heads
-        .filter(h => h.academicDepartment === name)
-        .map(h => ({
-          _id: h._id,
-          fullName: h.fullName,
-          email: h.email,
-          mobileNumber: h.mobileNumber,
-          team: h.department,
-          position: h.position,
-          status: h.status
-        }))
-    }));
-
-    return res.status(200).json({ success: true, departments: byDepartment });
-  } catch (err) {
-    console.error('[DEPARTMENT HEADS ERROR]', err);
-    return res.status(500).json({ success: false, message: 'Could not load department heads.' });
-  }
-};
-
 /** Recent audit trail — admin only. */
 const getAuditLogs = async (req, res) => {
   try {
@@ -374,7 +339,6 @@ module.exports = {
   createUser,
   getMemberList,
   getTeamDirectory,
-  getDepartmentHeads,
   getAuditLogs,
   updateUserRole
 };

@@ -5,7 +5,7 @@ import { ROLE_LABEL, ROLES } from '../constants';
 import {
   LayoutDashboard, FolderKanban, CheckSquare, CalendarCheck,
   Users, BookUser, Megaphone, FileText, ShieldAlert, LogOut, Lock,
-  Building2, UserCog, Inbox
+  UserCog, Inbox
 } from 'lucide-react';
 
 /** Everyone who can sign in. Listing this once stops a new role from silently
@@ -18,7 +18,6 @@ const MENU = [
   { id: 'projects',         label: 'Projects',         icon: FolderKanban,    roles: EVERYONE },
   { id: 'tasks',            label: 'Task Board',       icon: CheckSquare,     roles: EVERYONE },
   { id: 'members',          label: 'Members',          icon: Users,           roles: ['ADMIN', 'DEPARTMENT_HEAD', 'TEAM_HEAD'] },
-  { id: 'department-heads', label: 'Department Heads', icon: Building2,       roles: EVERYONE },
   { id: 'announcements',    label: 'Announcements',    icon: Megaphone,       roles: EVERYONE },
   { id: 'leave',            label: 'Leave',            icon: FileText,        roles: EVERYONE }
 ];

@@ -18,7 +18,6 @@ import TasksPage from './pages/TasksPage';
 import AttendancePage from './pages/AttendancePage';
 import MembersPage from './pages/MembersPage';
 import DirectoryPage from './pages/DirectoryPage';
-import DepartmentHeadsPage from './pages/DepartmentHeadsPage';
 import AnnouncementsPage from './pages/AnnouncementsPage';
 import LeavePage from './pages/LeavePage';
 import AuditLogsPage from './pages/AuditLogsPage';
@@ -31,7 +30,6 @@ const PAGES = {
   projects: ProjectsPage,
   tasks: TasksPage,
   members: MembersPage,
-  'department-heads': DepartmentHeadsPage,
   directory: DirectoryPage,
   announcements: AnnouncementsPage,
   leave: LeavePage,
